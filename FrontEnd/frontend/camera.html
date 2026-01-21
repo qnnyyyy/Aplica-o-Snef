@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">°
+<head>
+    <meta charset="UTF-8">
+    <title>SNEF | Gerenciar Câmeras</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cor-fundo: #F4F7F9;
+            --cor-azul-snef: #368D6D; 
+            --cor-borda: #E0E0E0;
+            --cor-texto: #333;
+        }
+
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background: var(--cor-fundo); 
+            padding: 15px; 
+            margin: 0; 
+            color: var(--cor-texto);
+        }
+
+        .container { 
+            max-width: 1100px; 
+            margin: 10px auto; 
+            background: #FFF; 
+            padding: 25px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+
+        h1 { 
+            color: var(--cor-azul-snef); 
+            margin-bottom: 25px; 
+            font-weight: 700; 
+            font-size: 1.6em;
+            text-align: center;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 10px;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            min-width: 700px; 
+        }
+
+        th { 
+            background-color: #f8f9fa; 
+            color: var(--cor-azul-snef); 
+            text-transform: uppercase; 
+            font-size: 0.8em; 
+            padding: 12px 15px; 
+            border-bottom: 2px solid var(--cor-borda); 
+            text-align: left; 
+        }
+
+        td { 
+            padding: 12px 15px; 
+            border-bottom: 1px solid var(--cor-borda); 
+            vertical-align: middle; 
+            font-size: 0.9em;
+        }
+
+        .btn-edit { 
+            background: var(--cor-azul-snef); 
+            color: white; 
+            border: none; 
+            padding: 8px 14px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold;
+            font-size: 0.85em;
+            transition: background 0.3s;
+        }
+
+        .btn-edit:hover {
+            background: #286B52;
+        }
+
+        .modal { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.6); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+            backdrop-filter: blur(3px);
+            padding: 15px;
+        }
+
+        .modal-content { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            width: 100%;
+            max-width: 450px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+            max-height: 90vh;
+            overflow-y: auto; 
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--cor-azul-snef);
+            border-bottom: 1px solid var(--cor-borda);
+            padding-bottom: 10px;
+        }
+
+        .modal-content label { 
+            font-weight: 600; 
+            font-size: 0.85em; 
+            display: block; 
+            margin-top: 12px; 
+            color: #444; 
+        }
+
+        .modal-content input, 
+        .modal-content select { 
+            width: 100%; 
+            padding: 12px; 
+            margin-top: 5px; 
+            box-sizing: border-box; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px; 
+        }
+
+        .modal-content input:disabled {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
+        }
+
+        .modal-actions { 
+            display: flex; 
+            gap: 12px; 
+            margin-top: 25px; 
+        }
+
+        .btn-save { 
+            background: var(--cor-azul-snef); 
+            color: white; 
+            border: none; 
+            flex: 2; 
+            padding: 14px; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            font-weight: bold; 
+        }
+
+        .btn-cancel { 
+            background: #e0e0e0; 
+            color: #444; 
+            border: none; 
+            flex: 1; 
+            padding: 14px; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            font-weight: bold; 
+        }
+
+        /* Media Queries */
+        @media (min-width: 768px) {
+            h1 { text-align: left; font-size: 2em; }
+            body { padding: 20px; }
+            .container { margin: 20px auto; padding: 30px; }
+        }
+
+        @media (max-width: 480px) {
+            .modal-actions {
+                flex-direction: column;
+            }
+            .btn-save, .btn-cancel {
+                width: 100%;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Gerenciar Câmeras</h1>
+    
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Serial Vivotek</th>
+                    <th>Câmera / Estação</th>
+                    <th>Zona</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="cameraTbody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3>Configurações da Câmera</h3>
+        <form id="editForm">
+            <input type="hidden" id="editId">
+            
+            <label>Device ID (Serial)</label>
+            <input type="text" id="editCameraId" disabled>
+            
+            <label>Nome da Câmera</label>
+            <input type="text" id="editName" placeholder="Ex: Câmera Principal Entrada" required>
+            
+            <label>Vincular Localização (Estação > Zona)</label>
+            <select id="editZone">
+                </select>
+            
+            <label>Localização / IP</label>
+            <input type="text" id="editLocation" placeholder="Ex: 192.168.1.10">
+            
+            <label>Modelo</label>
+            <input type="text" id="editModel" placeholder="Ex: IB9367-HT">
+            
+            <label>Status</label>
+            <select id="editEnabled">
+                <option value="1">Ativa</option>
+                <option value="0">Inativa</option>
+            </select>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn-save">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="src/controllers/camera.js"></script>
+
+<script>
+    function closeModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('editModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+</script>
+
+</body>
+</html>

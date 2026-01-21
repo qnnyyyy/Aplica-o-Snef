@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNEF - Cadastro</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --cor-fundo: #F4F7F9;
+            --cor-primaria: #368D6D;
+            --cor-hover: #286B52;
+            --cor-texto: #333333;
+            --cor-card: #FFFFFF;
+            --cor-borda: #E0E0E0;
+            --cor-erro: #D9534F;
+            --cor-sombra: rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh; 
+            background-color: var(--cor-fundo);
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .register-container {
+            background-color: var(--cor-card);
+            padding: 40px 30px; 
+            border-radius: 8px;
+            box-shadow: 0 8px 25px var(--cor-sombra);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .logo img {
+            max-width: 180px; 
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: var(--cor-texto);
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid var(--cor-borda);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px; 
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--cor-primaria);
+            box-shadow: 0 0 0 2px rgba(54, 141, 109, 0.1);
+        }
+
+        .btn-register {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--cor-primaria);
+            border: none;
+            border-radius: 4px;
+            color: #FFFFFF;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 10px;
+        }
+
+        .btn-register:hover {
+            background-color: var(--cor-hover);
+        }
+
+        .btn-register:active {
+            transform: scale(0.98);
+        }
+
+        .login-link {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .login-link a {
+            color: var(--cor-primaria);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: rgba(217, 83, 79, 0.1);
+            border-radius: 4px;
+            color: var(--cor-erro);
+            font-size: 0.85em;
+            display: none;
+        }
+
+        #success-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: var(--cor-card);
+            width: 100%;
+            max-width: 360px;
+            margin: auto;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h3 {
+            margin: 0 0 10px 0;
+            color: var(--cor-primaria);
+        }
+
+        .modal-content p {
+            margin-bottom: 25px;
+            font-size: 1em;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .modal-content button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--cor-primaria);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        @media (max-height: 600px) {
+            body {
+                align-items: flex-start;
+                padding-top: 20px;
+            }
+            .logo img {
+                max-width: 140px;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <main class="register-container">
+        <div class="logo">
+            <img src="./src/assets/snef_fr.jpg" alt="SNEF">
+        </div>
+
+        <h2>Criar Conta</h2>
+
+        <form id="register-form">
+            <div class="form-group">
+                <label for="name">Nome completo</label>
+                <input type="text" id="name" placeholder="Seu nome" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" placeholder="email@exemplo.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="Mínimo 6 caracteres" required>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-password">Confirmar senha</label>
+                <input type="password" id="confirm-password" placeholder="Repita a senha" required>
+            </div>
+
+            <button type="submit" class="btn-register">Cadastrar</button>
+        </form>
+
+        <div class="login-link">
+            <span>Já tem uma conta?</span> <a href="login.html">Faça login</a>
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+    </main>
+
+    <div id="success-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h3>Sucesso! 🎉</h3>
+            <p>Sua conta foi criada. Clique abaixo para acessar o sistema.</p>
+            <button id="btn-ok">Ir para o Login</button>
+        </div>
+    </div>
+
+    <script type="module" src="./src/controllers/cadastro.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNEF - Home | Estatísticas de Hoje</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        (function() {
+            const token = localStorage.getItem('token');
+            if (!token) window.location.href = 'login.html';
+        })();
+    </script>
+
+    <style>
+        :root {
+            --cor-fundo-principal: #F4F7F9;
+            --cor-texto-principal: #333333;
+            --cor-azul-snef: #368D6D; 
+            --cor-borda-detalhe: #E0E0E0;
+            --cor-card-fundo: #FFFFFF;
+            --cor-destaque-shadow: rgba(0, 0, 0, 0.1);
+            --cor-botao-fundo: #368D6D;
+            --cor-botao-hover: #286B52;
+            --cor-logo-n: #368D6D; 
+            --cor-logout: #D9534F;
+            --transition-padrao: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--cor-fundo-principal);
+            color: var(--cor-texto-principal);
+            margin: 0;
+            padding: 20px;
+        }
+
+        #header-snef {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--cor-borda-detalhe);
+            padding-bottom: 15px;
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            position: relative;
+        }
+
+        #header-snef h1 {
+            font-size: 2.2em;
+            color: var(--cor-azul-snef); 
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 0;
+            font-weight: 700;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+
+        .logo-n { color: var(--cor-logo-n); text-transform: inherit; letter-spacing: inherit; }
+
+        .header-controls { display: flex; gap: 10px; align-items: center; z-index: 2; }
+
+        .dropdown { position: relative; display: inline-block; }
+
+        .dropdown-button {
+            background-color: var(--cor-botao-fundo);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1em;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px var(--cor-destaque-shadow);
+            transition: var(--transition-padrao);
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        .dropdown-button:hover { 
+            background-color: var(--cor-botao-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 110%;
+            left: 0;
+            background-color: #fff;
+            border: 1px solid var(--cor-borda-detalhe);
+            border-radius: 4px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            min-width: 180px;
+            z-index: 1000;
+            padding: 5px 0;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: var(--cor-texto-principal);
+            font-size: 0.95em;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+        .dropdown-menu a:hover { background-color: #f8f9fa; color: var(--cor-azul-snef); padding-left: 20px; }
+
+        .btn-logout {
+            background-color: var(--cor-logout);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            transition: var(--transition-padrao);
+        }
+
+        .btn-logout:hover { 
+            opacity: 0.9; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(217, 83, 79, 0.3);
+        }
+
+        .animated-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background-color: var(--cor-botao-fundo);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1em;
+            transition: var(--transition-padrao);
+            box-shadow: 0 2px 5px var(--cor-destaque-shadow);
+            z-index: 2;
+        }
+
+        .animated-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(54, 141, 109, 0.3);
+            filter: brightness(1.1);
+        }
+
+        #data-scope {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            text-align: center;
+            border-bottom: 1px dotted var(--cor-borda-detalhe);
+            padding-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #data-scope span { font-size: 1.3em; font-weight: 700; letter-spacing: 1px; }
+
+        .compact-filter {
+            appearance: none;
+            background-color: var(--cor-card-fundo);
+            color: var(--cor-azul-snef);
+            border: 1.5px solid var(--cor-azul-snef);
+            padding: 5px 35px 5px 15px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.85em;
+            font-weight: 600;
+            border-radius: 20px;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23368D6D'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 18px;
+            transition: var(--transition-padrao);
+        }
+
+        #dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--cor-card-fundo);
+            padding: 25px;
+            border: 1px solid var(--cor-borda-detalhe);
+            border-radius: 6px;
+            box-shadow: 0 2px 10px var(--cor-destaque-shadow);
+            transition: var(--transition-padrao);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+
+        .card h2 {
+            font-size: 1.1em;
+            color: var(--cor-azul-snef);
+            border-bottom: 1px solid var(--cor-borda-detalhe);
+            padding-bottom: 8px;
+            margin-top: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-value { font-size: 3.5em; font-weight: 700; transition: transform 0.3s; }
+        .card:hover .metric-value { transform: scale(1.03); }
+
+        #total-in { color: #28a745; }
+        #total-out { color: #dc3545; }
+
+        ul { list-style: none; padding: 0; margin: 15px 0 0 0; max-height: 350px; overflow-y: auto; }
+        li { padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.9em; transition: background 0.2s; }
+        li:hover { background-color: #fafafa; }
+
+        .event-filter-btn {
+            background: #fff;
+            border: 1px solid var(--cor-borda-detalhe);
+            color: #666;
+            padding: 3px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-left: 4px;
+            font-family: 'Montserrat', sans-serif;
+            transition: var(--transition-padrao);
+        }
+        .event-filter-btn.active {
+            background-color: var(--cor-azul-snef);
+            color: white;
+            border-color: var(--cor-azul-snef);
+        }
+
+        @media (max-width: 900px) {
+            #header-snef h1 { font-size: 1.6em; position: static; transform: none; order: -1; width: 100%; text-align: center; }
+            #header-snef { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 20px; }
+            .header-controls { order: 1; }
+            .animated-button { order: 2; }
+        }
+
+        @media (max-width: 480px) {
+            .header-controls { flex-direction: column; width: 100%; }
+            .dropdown, .btn-logout, .animated-button { width: 100%; justify-content: center; }
+            .dropdown-button { width: 100%; justify-content: center; }
+            .metric-value { font-size: 2.8em; }
+        }
+    </style>
+</head>
+<body>
+
+<header id="header-snef">
+    <div class="header-controls">
+        <div class="dropdown">
+            <button class="dropdown-button" id="dropBtn">Configurações</button>
+            <div class="dropdown-menu" id="dropMenu">
+                <a href="station.html">Estação</a>
+                <a href="zona.html">Zona</a>
+                <a href="camera.html">Câmera</a>
+                <a href="usuario.html">Usuário</a>
+            </div>
+        </div>
+        <button id="btn-logout" class="btn-logout">Sair</button>
+    </div>
+
+    <h1>S<span class="logo-n">N</span>EF</h1>
+
+    <a href="reports.html" style="text-decoration: none;">
+        <button class="animated-button">Relatórios</button>
+    </a>
+</header>
+
+<div id="data-scope">
+    <span>ESTATÍSTICAS DE HOJE</span>
+    <select id="camera-filter" class="compact-filter">
+        <option value="all">TODAS AS CÂMERAS</option>
+    </select>
+</div>
+
+<div id="dashboard-container">
+    <div class="card">
+        <h2>Total de Entrada (IN)</h2>
+        <div class="metric-value" id="total-in">0</div>
+        <p>Pessoas que entraram hoje.</p>
+    </div>
+
+    <div class="card">
+        <h2>Total de Saída (OUT)</h2>
+        <div class="metric-value" id="total-out">0</div>
+        <p>Pessoas que saíram hoje.</p>
+    </div>
+
+    <div class="card">
+        <h2>Status das Câmeras</h2>
+        <ul id="camera-status-list"><li>Carregando...</li></ul>
+    </div>
+
+    <div class="card">
+        <h2 id="latest-events-header">Últimos Eventos</h2>
+        <ul id="latest-events"><li>Aguardando dados...</li></ul>
+    </div>
+</div>
+
+<script type="module">
+    const token = localStorage.getItem('token');
+    const API_BASE_URL = 'http://localhost:3000/api';
+
+
+    let currentEvents = [];
+    let eventFilter = 'ALL'; 
+
+    async function updateDashboard() {
+        try {
+            const filterEl = document.getElementById('camera-filter');
+            const cameraId = (filterEl && filterEl.value) ? filterEl.value : 'all';
+            
+            const res = await fetch(`${API_BASE_URL}/dashboard?camera_id=${cameraId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                const { totalIn, totalOut, latestEvents, cameraStatus, availableCameras } = result.data;
+                
+                currentEvents = latestEvents.map(e => ({
+                    event_time: e.event_time || e.received_at,
+                    camera: e.camera || e.camera_name,
+                    total_in: Number(e.total_in ?? e.countIn ?? 0),
+                    total_out: Number(e.total_out ?? e.countOut ?? 0)
+                }));
+
+                if (filterEl && filterEl.options.length <= 1 && availableCameras) {
+                    availableCameras.forEach(cam => {
+                        const opt = document.createElement('option');
+                        opt.value = cam.id;
+                        opt.textContent = cam.name;
+                        filterEl.appendChild(opt);
+                    });
+                }
+
+                document.getElementById('total-in').innerText = totalIn;
+                document.getElementById('total-out').innerText = totalOut;
+
+                renderEvents();
+
+                const statusList = document.getElementById('camera-status-list');
+                if (statusList) {
+                    statusList.innerHTML = cameraStatus.map(cam => {
+                        const color = cam.status === 'online' ? '#28a745' : '#dc3545';
+                        return `<li>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong>${cam.name}</strong>
+                                <span style="color:${color}; font-size:10px;">● ${cam.status.toUpperCase()}</span>
+                            </div>
+                        </li>`;
+                    }).join('');
+                }
+            }
+        } catch (err) {
+            console.error('Erro ao atualizar dashboard:', err);
+        }
+    }
+
+    function renderEvents() {
+        const container = document.getElementById('latest-events');
+        if (!container) return;
+
+        setupEventFilterButtons();
+
+        let filtered = [];
+        if (eventFilter === 'ALL') {
+            filtered = currentEvents;
+        } else if (eventFilter === 'IN') {
+            filtered = currentEvents.filter(e => e.total_in > 0);
+        } else if (eventFilter === 'OUT') {
+            filtered = currentEvents.filter(e => e.total_out > 0);
+        }
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">Nenhum registro encontrado.</li>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(event => {
+            const time = new Date(event.event_time).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            
+            let displayLines = '';
+            if (event.total_in > 0 && (eventFilter === 'ALL' || eventFilter === 'IN')) {
+                displayLines += `<span style="font-weight:bold; color:#28a745;">↑ ENTRADA (${event.total_in})</span>`;
+            }
+            if (event.total_out > 0 && (eventFilter === 'ALL' || eventFilter === 'OUT')) {
+                if (displayLines) displayLines += ' | ';
+                displayLines += `<span style="font-weight:bold; color:#dc3545;">↓ SAÍDA (${event.total_out})</span>`;
+            }
+
+            return `<li>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 2px 0;">
+                    <span><strong>${time}</strong> - ${event.camera}</span>
+                    <div style="text-align: right;">${displayLines}</div>
+                </div>
+            </li>`;
+        }).join('');
+    }
+
+    function setupEventFilterButtons() {
+        const header = document.getElementById('latest-events-header');
+        if (!header || document.getElementById('event-filter-group')) return;
+
+        const btnGroup = document.createElement('div');
+        btnGroup.id = 'event-filter-group';
+        btnGroup.innerHTML = `
+            <button onclick="window.setEventFilter('ALL')" class="event-filter-btn active" id="btn-all">T</button>
+            <button onclick="window.setEventFilter('IN')" class="event-filter-btn" id="btn-in">IN</button>
+            <button onclick="window.setEventFilter('OUT')" class="event-filter-btn" id="btn-out">OUT</button>
+        `;
+        header.appendChild(btnGroup);
+    }
+
+    window.setEventFilter = (type) => {
+        eventFilter = type;
+        document.querySelectorAll('.event-filter-btn').forEach(btn => btn.classList.remove('active'));
+        const activeId = type === 'ALL' ? 'btn-all' : (type === 'IN' ? 'btn-in' : 'btn-out');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) activeBtn.classList.add('active');
+        renderEvents();
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDashboard();
+        const filterEl = document.getElementById('camera-filter');
+        if (filterEl) filterEl.addEventListener('change', updateDashboard);
+        setInterval(updateDashboard, 15000);
+    });
+</script>
+
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+
+    const dropBtn = document.getElementById('dropBtn');
+    const dropMenu = document.getElementById('dropMenu');
+
+    dropBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropMenu.style.display = dropMenu.style.display === 'block' ? 'none' : 'block';
+    });
+    document.addEventListener('click', () => dropMenu.style.display = 'none');
+</script>
+
+</body>
+</html>

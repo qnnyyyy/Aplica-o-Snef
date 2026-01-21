@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Recuperar Senha | SNEF</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root {
+            --primary: #2b2142;
+            --accent: #008080;
+            --bg: #f4f2f8;
+            --error: #d9534f;
+            --success: #2e7d32;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #fff;
+            width: 100%;
+            max-width: 420px;
+            padding: 40px 30px;
+            border-radius: 14px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        img {
+            max-width: 140px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .msg {
+            margin-top: 20px;
+            font-size: 14px;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .error {
+            background: rgba(217,83,79,0.1);
+            color: var(--error);
+        }
+
+        .success {
+            background: rgba(46,125,50,0.1);
+            color: var(--success);
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <img src="/src/assets/snef_fr.jpg">
+    <h1>Recuperar senha</h1>
+    <p>Informe seu e-mail para receber o link</p>
+
+    <input type="email" id="email" placeholder="seu@email.com">
+    <button id="btn">Enviar link</button>
+
+    <div id="msg" class="msg"></div>
+</div>
+
+<script>
+const email = document.getElementById('email')
+const btn = document.getElementById('btn')
+const msg = document.getElementById('msg')
+
+btn.onclick = async () => {
+    msg.style.display = 'none'
+    btn.disabled = true
+    btn.textContent = 'Enviando...'
+
+    try {
+        const res = await fetch('http://localhost:3000/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.value })
+        })
+
+        if (!res.ok) throw new Error()
+
+        msg.className = 'msg success'
+        msg.textContent = 'Se o e-mail existir, o link será enviado.'
+        msg.style.display = 'block'
+        email.value = ''
+    } catch {
+        msg.className = 'msg error'
+        msg.textContent = 'Erro ao enviar e-mail.'
+        msg.style.display = 'block'
+    }
+
+    btn.disabled = false
+    btn.textContent = 'Enviar link'
+}
+</script>
+
+</body>
+</html>

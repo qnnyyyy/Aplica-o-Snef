@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNEF - Gerenciar Estações</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        })();
+    </script>
+    <style>
+        :root {
+            --cor-fundo-principal: #F4F7F9;
+            --cor-texto-principal: #333333;
+            --cor-azul-snef: #368D6D; 
+            --cor-borda-detalhe: #E0E0E0;
+            --cor-card-fundo: #FFFFFF;
+            --cor-destaque-shadow: rgba(0, 0, 0, 0.1); 
+            --cor-botao-fundo: #368D6D; 
+            --cor-botao-hover: #286B52; 
+            --cor-logout: #D9534F;
+            --cor-edit: #f0ad4e;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--cor-fundo-principal);
+            color: var(--cor-texto-principal);
+            margin: 0; 
+            padding: 15px;
+        }
+
+        #header-snef {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 25px; 
+            border-bottom: 2px solid var(--cor-borda-detalhe);
+            padding-bottom: 15px; 
+            max-width: 1200px; 
+            margin: 0 auto;
+            position: relative;
+        }
+
+        #header-snef h1 {
+            font-size: 1.6em; 
+            color: var(--cor-azul-snef); 
+            text-transform: uppercase;
+            letter-spacing: 2px; 
+            margin: 0; 
+            font-weight: 700;
+        }
+
+        .header-controls { display: flex; gap: 10px; }
+
+        .animated-button {
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            padding: 8px 16px;
+            background-color: var(--cor-botao-fundo); 
+            color: #FFFFFF; 
+            border: none;
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-family: 'Montserrat', sans-serif;
+            transition: all 0.3s ease; 
+            box-shadow: 0 2px 5px var(--cor-destaque-shadow);
+            font-weight: 500;
+        }
+
+        .animated-button:hover { 
+            background-color: var(--cor-botao-hover); 
+            transform: translateY(-1px); 
+        }
+
+        .container {
+            max-width: 1200px; 
+            margin: 0 auto; 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--cor-card-fundo); 
+            padding: 20px; 
+            border-radius: 6px;
+            border: 1px solid var(--cor-borda-detalhe); 
+            box-shadow: 0 4px 15px var(--cor-destaque-shadow);
+        }
+
+        .card h2 { 
+            color: var(--cor-azul-snef); 
+            margin-top: 0; 
+            border-bottom: 1px solid var(--cor-borda-detalhe); 
+            padding-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        .form-group input {
+            padding: 12px; 
+            border: 1px solid var(--cor-borda-detalhe); 
+            border-radius: 4px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+            min-width: 500px;
+        }
+        
+        table th { 
+            background: #E9ECEF; 
+            text-align: left; 
+            padding: 12px; 
+            border-bottom: 2px solid var(--cor-azul-snef);
+            font-size: 0.9em;
+        }
+        
+        table td { 
+            padding: 12px; 
+            border-bottom: 1px solid var(--cor-borda-detalhe);
+            font-size: 0.9em;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .btn-delete { background: var(--cor-logout); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-edit { background: var(--cor-edit); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%;
+            background-color: rgba(0,0,0,0.6); 
+            align-items: center; 
+            justify-content: center;
+            padding: 15px;
+        }
+        
+        .modal-content {
+            background-color: white; 
+            padding: 25px; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        
+        .modal-header h3 { 
+            margin-top: 0; 
+            color: var(--cor-azul-snef); 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 10px; 
+        }
+        
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        
+        .btn-cancel { background: #999; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; }
+
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            #header-snef h1 { position: absolute; left: 50%; transform: translateX(-50%); font-size: 2.2em; }
+            .container { grid-template-columns: 1fr 2fr; }
+            .card { padding: 25px; }
+            .card h2 { font-size: 1.5em; }
+        }
+
+        @media (max-width: 480px) {
+            #header-snef h1 { font-size: 1.4em; letter-spacing: 1px; }
+            .animated-button { padding: 8px 12px; font-size: 0.85em; }
+        }
+    </style>
+</head>
+<body>
+
+<header id="header-snef">
+    <div class="header-controls">
+        <a href="index.html" style="text-decoration:none"><button class="animated-button">🏠 Home</button></a>
+    </div>
+    <h1>SNEF</h1>
+    <div class="spacer" style="width: 100px;"></div>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h2>Nova Estação</h2>
+        <form id="station-form">
+            <div class="form-group">
+                <label>Nome da Estação</label>
+                <input type="text" id="name" placeholder="Ex: Estação Central" required>
+            </div>
+            <div class="form-group">
+                <label>Localização / Endereço</label>
+                <input type="text" id="location" placeholder="Ex: Setor Norte" required>
+            </div>
+            <button type="submit" class="animated-button" style="width: 100%; justify-content: center;">Gravar Estação</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Estações Cadastradas</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Localização</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="station-tbody">
+                    <tr><td colspan="3">Carregando estações...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Editar Estação</h3>
+        </div>
+        <form id="edit-form">
+            <input type="hidden" id="edit-id">
+            <div class="form-group">
+                <label>Nome da Estação</label>
+                <input type="text" id="edit-name" required>
+            </div>
+            <div class="form-group">
+                <label>Localização</label>
+                <input type="text" id="edit-location" required>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" id="closeModal">Cancelar</button>
+                <button type="submit" class="animated-button">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="module" src="./src/controllers/station.js"></script>
+</body>
+</html>

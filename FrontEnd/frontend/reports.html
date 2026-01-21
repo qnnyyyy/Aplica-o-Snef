@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNEF - Relatórios Detalhados</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        })();
+    </script>
+    <style>
+        :root {
+            --cor-fundo-principal: #F4F7F9;
+            --cor-texto-principal: #333333;
+            --cor-azul-snef: #368D6D; 
+            --cor-borda-detalhe: #E0E0E0;
+            --cor-card-fundo: #FFFFFF;
+            --cor-destaque-shadow: rgba(0, 0, 0, 0.1); 
+            --cor-botao-fundo: #368D6D; 
+            --cor-botao-hover: #286B52; 
+            --cor-tabela-header: #E9ECEF; 
+            --cor-logout: #D9534F;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--cor-fundo-principal);
+            color: var(--cor-texto-principal);
+            margin: 0; 
+            padding: 10px;
+        }
+
+        #header-snef {
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px; 
+            border-bottom: 2px solid var(--cor-borda-detalhe);
+            padding-bottom: 15px; 
+            max-width: 1200px; 
+            margin-left: auto; 
+            margin-right: auto;
+            gap: 15px;
+        }
+
+        #header-snef h1 {
+            font-size: 1.8em; 
+            color: var(--cor-azul-snef); 
+            text-transform: uppercase;
+            letter-spacing: 3px; 
+            margin: 0; 
+            font-weight: 700;
+            order: -1;
+        }
+
+        .header-controls { 
+            display: flex; 
+            gap: 10px; 
+            align-items: center; 
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .animated-button, .btn-logout {
+            padding: 8px 12px;
+            font-size: 0.9em;
+        }
+
+        .animated-button {
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            background-color: var(--cor-botao-fundo); 
+            color: #FFFFFF; 
+            border: none;
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-family: 'Montserrat', sans-serif;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 2px 5px var(--cor-destaque-shadow);
+        }
+
+        .animated-button:hover {
+            background-color: var(--cor-botao-hover); 
+            transform: translateY(-1px);
+        }
+
+        .btn-logout {
+            background-color: var(--cor-logout); 
+            color: white; 
+            border: none;
+            border-radius: 4px; 
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif; 
+            font-weight: 600; 
+            transition: opacity 0.2s;
+        }
+
+        #reports-container {
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 15px;
+            background-color: var(--cor-card-fundo); 
+            border: 1px solid var(--cor-borda-detalhe);
+            border-radius: 6px; 
+            box-shadow: 0 4px 15px var(--cor-destaque-shadow);
+        }
+
+        #filter-section {
+            border-bottom: 1px solid var(--cor-borda-detalhe); 
+            padding-bottom: 20px;
+            margin-bottom: 20px; 
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-weight: bold; margin-bottom: 5px; font-size: 0.85em; }
+        .filter-group input, .filter-group select {
+            padding: 10px; 
+            border: 1px solid var(--cor-borda-detalhe); 
+            border-radius: 4px;
+            font-family: 'Montserrat', sans-serif; 
+            background-color: var(--cor-fundo-principal);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #btn-apply-filters {
+            background-color: var(--cor-azul-snef); 
+            color: white; 
+            border: none;
+            border-radius: 4px; 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            height: 45px;
+            font-weight: bold; 
+            transition: 0.3s;
+            grid-column: 1 / -1;
+        }
+
+        #btn-apply-filters:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #results-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px; 
+            min-width: 800px;
+        }
+
+        #results-table thead th {
+            background-color: var(--cor-tabela-header); 
+            padding: 12px; 
+            font-weight: 700;
+            border-bottom: 2px solid var(--cor-azul-snef); 
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        #results-table tbody td { 
+            padding: 10px 12px; 
+            border-bottom: 1px solid var(--cor-borda-detalhe); 
+            font-size: 0.85em;
+        }
+
+        .direction-IN { color: #28a745; font-weight: bold; } 
+        .direction-OUT { color: #dc3545; font-weight: bold; } 
+        
+        .btn-export-row {
+            background-color: var(--cor-azul-snef); 
+            color: white; 
+            border: none;
+            border-radius: 4px; 
+            padding: 6px 10px; 
+            cursor: pointer; 
+            font-size: 0.8em;
+            white-space: nowrap;
+        }
+
+        #btn-export-full-report {
+            background-color: var(--cor-azul-snef); 
+            color: white; 
+            border: none;
+            border-radius: 4px; 
+            padding: 12px 20px; 
+            margin-top: 15px; 
+            display: none; 
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        #total-results-summary {
+            font-size: 1em; 
+            padding: 15px; 
+            background: #f8f9fa; 
+            border-radius: 4px; 
+            margin: 10px 0;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            #header-snef { flex-direction: row; justify-content: space-between; }
+            #header-snef h1 { position: absolute; left: 50%; transform: translateX(-50%); font-size: 2.2em; order: 0; }
+            #btn-apply-filters { grid-column: auto; width: auto; align-self: flex-end; }
+            #btn-export-full-report { width: auto; }
+            #total-results-summary { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+<header id="header-snef">
+    <div class="header-controls">
+        <a href="index.html" style="text-decoration:none"><button class="animated-button">Home</button></a>
+        <a href="graficos.html" style="text-decoration:none"><button class="animated-button">Gráficos</button></a>
+        <button id="btn-logout" class="btn-logout">Sair</button>
+    </div>
+    <h1>SNEF</h1>
+</header>
+
+<div id="reports-container">
+    <h2>Filtros de Relatório</h2>
+    <div id="filter-section">
+        <div class="filter-group"><label>Data Inicial</label><input type="date" id="date-start"></div>
+        <div class="filter-group"><label>Data Final</label><input type="date" id="date-end"></div>
+        <div class="filter-group"><label>Hora Inicial</label><input type="time" id="time-start"></div>
+        <div class="filter-group"><label>Hora Final</label><input type="time" id="time-end"></div>
+        
+        <div class="filter-group">
+            <label>Estação</label>
+            <select id="station-select"><option value="">Todas as Estações</option></select>
+        </div>
+        <div class="filter-group">
+            <label>Zona</label>
+            <select id="zone-select"><option value="">Todas as Zonas</option></select>
+        </div>
+        <div class="filter-group">
+            <label>Câmera</label>
+            <select id="camera-select"><option value="">Todas as Câmeras</option></select>
+        </div>
+        
+        <button id="btn-apply-filters" disabled>Gerar Relatório</button>
+    </div>
+
+    <div id="total-results-summary">
+        Total Entradas: <span id="report-total-in" class="direction-IN">0</span> | 
+        Total Saídas: <span id="report-total-out" class="direction-OUT">0</span>
+    </div>
+
+    <p id="loading-message">Carregando filtros...</p>
+    
+    <button id="btn-export-full-report">📊 Exportar Tabela Completa (.xlsx)</button>
+
+    <div class="table-responsive">
+        <table id="results-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Estação</th>
+                    <th>Câmera (ID)</th>
+                    <th>Zona</th>
+                    <th>Entradas</th>
+                    <th>Saídas</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="report-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script type="module" src="./src/controllers/reports.js"></script>
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+</script>
+</body>
+</html>
