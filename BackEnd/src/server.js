@@ -19,7 +19,7 @@ const db = mysql.createPool({
 const dbPromise = db.promise()
 
 app.use(cors({
-    origin: '*', 
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }))
@@ -46,14 +46,18 @@ app.use('/api/stations', stationRouter(dbPromise))
 
 app.post('/vivotek/push', async (req, res) => {
     const payload = req.body
-    const cameraSerial = payload.Device_ID || 'Desconhecido'
-    
+
+    const cameraSerial =
+        payload.Device_ID ||
+        payload?.Source?.IPAddress ||
+        'Desconhecido'
+
     try {
         const [rows] = await dbPromise.query(
             'SELECT id, zone_id, tenant_id FROM cameras WHERE camera_id = ?',
             [cameraSerial]
         )
-        
+
         let internalId
         let zoneId = null
         let tenantId = 1
@@ -63,11 +67,25 @@ app.post('/vivotek/push', async (req, res) => {
             zoneId = rows[0].zone_id
             tenantId = rows[0].tenant_id || 1
         } else {
-            const [result] = await dbPromise.query(
-                'INSERT INTO cameras (camera_id, name, enabled, tenant_id) VALUES (?, ?, ?, ?)',
-                [cameraSerial, `Câmera ${cameraSerial}`, true, 1]
-            )
-            internalId = result.insertId
+            try {
+                const [result] = await dbPromise.query(
+                    'INSERT INTO cameras (camera_id, name, enabled, tenant_id) VALUES (?, ?, ?, ?)',
+                    [cameraSerial, `Câmera ${cameraSerial}`, true, 1]
+                )
+                internalId = result.insertId
+            } catch (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    const [existing] = await dbPromise.query(
+                        'SELECT id, zone_id, tenant_id FROM cameras WHERE camera_id = ? AND tenant_id = ?',
+                        [cameraSerial, tenantId]
+                    )
+                    internalId = existing[0].id
+                    zoneId = existing[0].zone_id
+                    tenantId = existing[0].tenant_id
+                } else {
+                    throw err
+                }
+            }
         }
 
         await dbPromise.query(
@@ -76,17 +94,19 @@ app.post('/vivotek/push', async (req, res) => {
         )
 
         const analyticData = payload.Analytic_Data
+
         if (Array.isArray(analyticData)) {
             for (const event of analyticData) {
-                const eventTime = event.Timestamp || new Date();
+                const eventTime = event.Timestamp || new Date()
 
-                if (event.Direction_IN > 0) {
+                if (event.Direction_IN !== undefined) {
                     await dbPromise.query(
                         'INSERT INTO people_count_events (camera_id, zone_id, direction, count, event_time, tenant_id) VALUES (?, ?, "IN", ?, ?, ?)',
                         [internalId, zoneId, event.Direction_IN, eventTime, tenantId]
                     )
                 }
-                if (event.Direction_OUT > 0) {
+
+                if (event.Direction_OUT !== undefined) {
                     await dbPromise.query(
                         'INSERT INTO people_count_events (camera_id, zone_id, direction, count, event_time, tenant_id) VALUES (?, ?, "OUT", ?, ?, ?)',
                         [internalId, zoneId, event.Direction_OUT, eventTime, tenantId]
