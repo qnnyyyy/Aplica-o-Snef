@@ -130,10 +130,10 @@ const PORT = 3000
 app.listen(PORT, '0.0.0.0', async () => {
     try {
         await dbPromise.query('SELECT 1')
-        console.log(`🚀 Servidor rodando em http://localhost:${PORT}`)
-        console.log(`✅ Banco de dados conectado com sucesso`)
+        console.log(`Servidor rodando em http://localhost:${PORT}`)
+        console.log(`Banco de dados conectado com sucesso`)
     } catch (e) {
-        console.error('❌ Erro crítico ao iniciar:', e.message)
+        console.error('Erro crítico ao iniciar:', e.message)
         process.exit(1)
     }
 })

@@ -23,19 +23,19 @@
 
         body {
             margin: 0;
-            min-height: 100vh; /* Mudado de height para min-height para evitar quebra em telas muito curtas */
+            min-height: 100vh;
             background-color: var(--cor-fundo);
             font-family: 'Montserrat', sans-serif;
             color: var(--cor-texto);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px; /* Margem de segurança para o card não tocar as bordas do celular */
+            padding: 20px;
         }
 
         .container {
             background-color: var(--cor-card);
-            padding: 50px 30px; /* Padding reduzido para mobile */
+            padding: 50px 30px;
             border-radius: 8px;
             box-shadow: 0 8px 25px var(--cor-sombra);
             text-align: center;
@@ -65,7 +65,7 @@
         }
 
         .btn-login {
-            display: block; /* Mudado para block para melhor controle de largura */
+            display: block;
             width: 100%;
             padding: 16px 0;
             font-size: 1.1em;
@@ -97,17 +97,15 @@
             line-height: 1.4;
         }
 
-        /* Media Queries para ajustes finos */
         @media (min-width: 480px) {
             .container {
-                padding: 60px 50px; /* Volta ao padding original em telas maiores */
+                padding: 60px 50px;
             }
             .subtitle {
                 font-size: 1.05em;
             }
         }
 
-        /* Prevenção para telas com pouca altura (ex: celular em modo paisagem) */
         @media (max-height: 500px) {
             body {
                 align-items: flex-start;
