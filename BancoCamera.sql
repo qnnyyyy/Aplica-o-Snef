@@ -11,15 +11,34 @@ CREATE DATABASE IF NOT EXISTS snef_people_count
 USE snef_people_count;
 
 -- =========================================================
+-- TABELA: tenants
+-- Clientes/empresas do sistema (multi-tenant)
+-- =========================================================
+CREATE TABLE tenants (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tenants (id, name) VALUES (1, 'SNEF');
+
+-- =========================================================
 -- TABELA: stations
 -- Estações / locais maiores (ex: Estação 11)
 -- =========================================================
 CREATE TABLE stations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
     name VARCHAR(100) NOT NULL UNIQUE,
     location VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_stations_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
 );
+
+CREATE INDEX idx_stations_tenant ON stations(tenant_id);
 
 -- =========================================================
 -- TABELA: zones
@@ -27,6 +46,7 @@ CREATE TABLE stations (
 -- =========================================================
 CREATE TABLE zones (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(255),
     station_id BIGINT NULL,
@@ -35,8 +55,14 @@ CREATE TABLE zones (
     CONSTRAINT fk_zone_station
         FOREIGN KEY (station_id)
         REFERENCES stations(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_zones_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
 );
+
+CREATE INDEX idx_zones_tenant ON zones(tenant_id);
 
 -- =========================================================
 -- TABELA: cameras
@@ -44,6 +70,7 @@ CREATE TABLE zones (
 -- =========================================================
 CREATE TABLE cameras (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
 
     camera_id VARCHAR(100) NOT NULL UNIQUE,   -- Serial / Device_ID
     name VARCHAR(255),
@@ -59,8 +86,14 @@ CREATE TABLE cameras (
     CONSTRAINT fk_camera_zone
         FOREIGN KEY (zone_id)
         REFERENCES zones(id)
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_cameras_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
 );
+
+CREATE INDEX idx_cameras_tenant ON cameras(tenant_id);
 
 -- =========================================================
 -- TABELA: rules
@@ -89,6 +122,7 @@ CREATE TABLE raw_payloads (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
     camera_id BIGINT NOT NULL,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
     raw_json JSON NOT NULL,
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -105,11 +139,16 @@ CREATE TABLE raw_payloads (
 
     CONSTRAINT fk_raw_camera
         FOREIGN KEY (camera_id)
-        REFERENCES cameras(id)
+        REFERENCES cameras(id),
+
+    CONSTRAINT fk_raw_payloads_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
 );
 
 CREATE INDEX idx_raw_time ON raw_payloads (received_at);
 CREATE INDEX idx_raw_camera ON raw_payloads (camera_id);
+CREATE INDEX idx_raw_payloads_tenant ON raw_payloads (tenant_id);
 
 -- =========================================================
 -- TABELA: people_count_events
@@ -119,6 +158,7 @@ CREATE TABLE people_count_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
     camera_id BIGINT NOT NULL,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
     rule_id BIGINT NULL,
     zone_id BIGINT NULL,
 
@@ -143,8 +183,14 @@ CREATE TABLE people_count_events (
 
     CONSTRAINT fk_event_zone
         FOREIGN KEY (zone_id)
-        REFERENCES zones(id)
+        REFERENCES zones(id),
+
+    CONSTRAINT fk_pce_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
 );
+
+CREATE INDEX idx_pce_tenant ON people_count_events(tenant_id);
 
 -- =========================================================
 -- TABELA: daily_counts
@@ -209,6 +255,7 @@ CREATE TABLE hourly_counts (
 -- =========================================================
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL DEFAULT 1,
 
     name VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
@@ -223,8 +270,14 @@ CREATE TABLE users (
     reset_token_expires DATETIME NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_users_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
 );
+
+CREATE INDEX idx_users_tenant ON users(tenant_id);
 
 -- =========================================================
 -- TRIGGER: Agregação automática ao inserir payload
