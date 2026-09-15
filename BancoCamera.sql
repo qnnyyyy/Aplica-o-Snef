@@ -74,7 +74,10 @@ CREATE TABLE cameras (
 
     camera_id VARCHAR(100) NOT NULL UNIQUE,   -- Serial / Device_ID
     name VARCHAR(255),
+    osd_text VARCHAR(100),                    -- Nome exibido na própria imagem (OSD)
     model VARCHAR(100),
+    camera_user VARCHAR(100),                 -- Usuário de acesso à API da câmera
+    camera_password_enc VARCHAR(500),         -- Senha criptografada (AES-256-GCM)
     location VARCHAR(255) UNIQUE,             -- IP ou local físico
     enabled BOOLEAN DEFAULT TRUE,
 

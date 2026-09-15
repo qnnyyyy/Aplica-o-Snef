@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>SNEF | Live View</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        })();
+    </script>
+    <style>
+        :root {
+            --cor-fundo: #F4F7F9;
+            --cor-azul-snef: #368D6D;
+            --cor-hover: #286B52;
+            --cor-borda: #E0E0E0;
+            --cor-texto: #333;
+            --cor-logout: #D9534F;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--cor-fundo);
+            padding: 15px;
+            margin: 0;
+            color: var(--cor-texto);
+        }
+
+        #header-snef {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            border-bottom: 2px solid var(--cor-borda);
+            padding-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        #header-snef h1 {
+            color: var(--cor-azul-snef);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.6em;
+        }
+
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+
+        .animated-button, .btn-logout {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .animated-button { background: var(--cor-azul-snef); color: #fff; }
+        .animated-button:hover { background: var(--cor-hover); }
+        .btn-logout { background: var(--cor-logout); color: #fff; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #FFF;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        #filter-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--cor-borda);
+        }
+
+        #filter-bar label { font-weight: 600; font-size: 0.8em; display: block; margin-bottom: 4px; color: #555; }
+
+        #filter-bar input, #filter-bar select {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 4px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        #camera-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .camera-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 6px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .camera-row .info strong { display: block; font-size: 1em; }
+        .camera-row .info small { color: #666; }
+
+        .btn-view {
+            background: var(--cor-azul-snef);
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-view:hover { background: var(--cor-hover); }
+
+        #empty-state { text-align: center; color: #999; padding: 30px; }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--cor-azul-snef);
+            border-bottom: 1px solid var(--cor-borda);
+            padding-bottom: 10px;
+        }
+
+        #snapshot-box {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #1c1c1c;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        #snapshot-box img { width: 100%; height: 100%; object-fit: contain; }
+        #snapshot-box .placeholder { color: #ccc; font-size: 0.9em; text-align: center; padding: 20px; }
+
+        .modal-content label { font-weight: 600; font-size: 0.85em; display: block; margin-top: 12px; color: #444; }
+
+        .modal-content input {
+            width: 100%;
+            padding: 11px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px;
+        }
+
+        .hint { font-size: 0.78em; color: #888; margin-top: 3px; }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+        .btn-sync {
+            background: #fff;
+            color: var(--cor-azul-snef);
+            border: 1.5px solid var(--cor-azul-snef);
+            flex: 1;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: bold;
+            min-width: 180px;
+        }
+
+        .btn-save { background: var(--cor-azul-snef); color: #fff; border: none; flex: 1; padding: 12px; cursor: pointer; border-radius: 6px; font-weight: bold; min-width: 120px; }
+        .btn-cancel { background: #e0e0e0; color: #444; border: none; padding: 12px; cursor: pointer; border-radius: 6px; font-weight: bold; }
+
+        #modal-feedback { margin-top: 12px; font-size: 0.85em; padding: 10px; border-radius: 6px; display: none; }
+        #modal-feedback.ok { display: block; background: #e6f4ea; color: #1e7d34; }
+        #modal-feedback.err { display: block; background: #fdecea; color: #b3261e; }
+
+        @media (max-width: 480px) {
+            .modal-actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<header id="header-snef">
+    <div class="header-controls">
+        <a href="index.html" style="text-decoration:none"><button class="animated-button">Home</button></a>
+    </div>
+    <h1>Live View</h1>
+    <div class="header-controls">
+        <button id="btn-logout" class="btn-logout">Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div id="filter-bar">
+        <div>
+            <label>Estação</label>
+            <select id="filter-station"><option value="">Todas as Estações</option></select>
+        </div>
+        <div>
+            <label>Zona</label>
+            <select id="filter-zone"><option value="">Todas as Zonas</option></select>
+        </div>
+        <div>
+            <label>Câmera</label>
+            <select id="filter-camera"><option value="">Todas as Câmeras</option></select>
+        </div>
+        <div>
+            <label>Buscar por IP</label>
+            <input type="text" id="filter-ip" placeholder="Ex: 10.3.0.20">
+        </div>
+    </div>
+
+    <div id="camera-list"></div>
+    <div id="empty-state" style="display:none">Nenhuma câmera encontrada.</div>
+</div>
+
+<div id="viewModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modal-title">Live View</h3>
+
+        <div id="snapshot-box">
+            <div class="placeholder" id="snapshot-placeholder">Carregando imagem...</div>
+            <img id="snapshot-img" style="display:none">
+        </div>
+
+        <form id="liveForm">
+            <input type="hidden" id="editId">
+
+            <label>Nome da Câmera</label>
+            <input type="text" id="editName" required>
+
+            <label>Nome que aparece na câmera (OSD)</label>
+            <input type="text" id="editOsd" placeholder="Ex: Catraca Entrada">
+            <div class="hint">Texto sobreposto na própria imagem da câmera.</div>
+
+            <label>IP da Câmera</label>
+            <input type="text" id="editIp" required>
+            <div class="hint">Mantém o IP atual se não for alterado.</div>
+
+            <label>Usuário de acesso à câmera</label>
+            <input type="text" id="editUser" placeholder="admin">
+
+            <label>Senha de acesso à câmera</label>
+            <input type="password" id="editPassword" placeholder="Deixe em branco para manter a atual">
+
+            <div id="modal-feedback"></div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-sync" id="btn-sync-time">🕒 Sincronizar Data/Hora</button>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="btn-close-modal">Fechar</button>
+                <button type="submit" class="btn-save">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="./src/controllers/liveview.js"></script>
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+</script>
+
+</body>
+</html>
