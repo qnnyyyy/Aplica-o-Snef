@@ -186,18 +186,33 @@
             white-space: nowrap;
         }
 
-        #btn-export-full-report {
-            background-color: var(--cor-azul-snef); 
-            color: white; 
+        #export-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        #btn-export-full-report, #btn-export-selected {
+            background-color: var(--cor-azul-snef);
+            color: white;
             border: none;
-            border-radius: 4px; 
-            padding: 12px 20px; 
-            margin-top: 15px; 
-            display: none; 
+            border-radius: 4px;
+            padding: 12px 20px;
             cursor: pointer;
             font-weight: bold;
-            width: 100%;
+            flex: 1;
+            min-width: 200px;
         }
+
+        #btn-export-selected:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .row-check, #check-all { width: 16px; height: 16px; cursor: pointer; }
+
+        tr.row-selected { background-color: #eaf5f0; }
 
         #total-results-summary {
             font-size: 1em; 
@@ -260,13 +275,17 @@
     </div>
 
     <p id="loading-message">Carregando filtros...</p>
-    
-    <button id="btn-export-full-report">📊 Exportar Tabela Completa (.xlsx)</button>
+
+    <div id="export-toolbar" style="display:none">
+        <button id="btn-export-selected" disabled>📥 Exportar Selecionados (<span id="selected-count">0</span>)</button>
+        <button id="btn-export-full-report">📊 Exportar Tabela Completa (.xlsx)</button>
+    </div>
 
     <div class="table-responsive">
         <table id="results-table" style="display: none;">
             <thead>
                 <tr>
+                    <th style="width:32px"><input type="checkbox" id="check-all"></th>
                     <th>Data/Hora</th>
                     <th>Estação</th>
                     <th>Câmera (ID)</th>
@@ -281,7 +300,8 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://unpkg.com/chart.js@4/dist/chart.umd.min.js"></script>
 <script type="module" src="./src/controllers/reports.js"></script>
 <script>
     document.getElementById('btn-logout').addEventListener('click', () => {
