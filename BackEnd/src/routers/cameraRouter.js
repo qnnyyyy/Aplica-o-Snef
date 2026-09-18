@@ -35,7 +35,7 @@ module.exports = (db) => {
         }
     })
 
-    // Proxy do snapshot ao vivo da câmera (evita expor a credencial da câmera ao navegador)
+    // proxy pro snapshot: evita expor a credencial da câmera no navegador
     router.get('/:id/snapshot', tenantMiddleware, async (req, res) => {
         try {
             const [rows] = await db.query(
@@ -64,7 +64,6 @@ module.exports = (db) => {
         }
     })
 
-    // Atualiza nome, OSD, IP e credenciais da câmera; tenta refletir o OSD na própria câmera
     router.put('/:id/live-settings', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { name, osd_text, location, camera_user, camera_password } = req.body
@@ -120,7 +119,6 @@ module.exports = (db) => {
         }
     })
 
-    // Sincroniza o relógio interno da câmera com a data/hora atual (ou informada)
     router.post('/:id/sync-time', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { datetime } = req.body

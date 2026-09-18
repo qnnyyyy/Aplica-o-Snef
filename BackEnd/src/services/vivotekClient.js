@@ -32,7 +32,6 @@ async function fetchSnapshot(camera, password) {
     return { buffer, contentType: res.headers.get('content-type') || 'image/jpeg' }
 }
 
-// Altera o texto sobreposto na imagem (OSD) via API de parâmetros da VIVOTEK.
 async function setOsdText(camera, password, text) {
     const params = new URLSearchParams({ videoin_c0_text: text || '' })
     const url = `http://${camera.location}/cgi-bin/admin/setparam.cgi?${params}`

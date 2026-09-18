@@ -5,7 +5,6 @@ const accountList = document.getElementById('account-list')
 const accountSearch = document.getElementById('account-search')
 const accountEmpty = document.getElementById('account-empty')
 
-const SEARCH_THRESHOLD = 6
 let currentAccounts = []
 let selectionTokenAtual = null
 
@@ -55,15 +54,11 @@ function mostrarSelecaoDeConta(data) {
     currentAccounts = data.accounts
     selectionTokenAtual = data.selectionToken
 
-    accountSearch.style.display = currentAccounts.length > SEARCH_THRESHOLD ? 'block' : 'none'
     accountSearch.value = ''
 
     renderizarContas(currentAccounts)
     accountModal.style.display = 'flex'
-
-    if (accountSearch.style.display === 'block') {
-        setTimeout(() => accountSearch.focus(), 50)
-    }
+    setTimeout(() => accountSearch.focus(), 50)
 }
 
 function renderizarContas(accounts) {

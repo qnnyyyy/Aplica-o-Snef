@@ -39,7 +39,6 @@ module.exports = (dbPromise) => {
         }
     }
 
-    // Lista os membros com acesso ao tenant do admin logado
     router.get('/', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
         try {
             const [rows] = await dbPromise.query(
@@ -57,8 +56,6 @@ module.exports = (dbPromise) => {
         }
     })
 
-    // Convida um novo e-mail para o tenant (usuário ou admin). Sempre exige a
-    // mesma chave mestra usada no cadastro, mesmo pra convidar como usuário comum.
     router.post('/invite', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
         const { name, email, role, confirmationKey } = req.body
         const grantAdmin = role === 'admin'
@@ -72,7 +69,6 @@ module.exports = (dbPromise) => {
         }
 
         try {
-
             const [exists] = await dbPromise.query(
                 'SELECT id FROM users WHERE email = ? AND tenant_id = ?',
                 [email, req.tenantId]
@@ -82,7 +78,7 @@ module.exports = (dbPromise) => {
                 return res.status(409).json({ status: 'error', message: 'Esse e-mail já tem acesso a este tenant' })
             }
 
-            // Senha inutilizável até a pessoa convidada definir a própria senha pelo link
+            // senha temporária inutilizável até a pessoa definir a própria pelo link
             const placeholderHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
 
             const [result] = await dbPromise.query(
@@ -129,8 +125,6 @@ module.exports = (dbPromise) => {
         }
     })
 
-    // Promove/rebaixa um membro existente do tenant. Também exige a chave
-    // mestra (mudar permissão é tão sensível quanto conceder admin no convite).
     router.put('/:id/role', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { role, confirmationKey } = req.body
@@ -172,7 +166,6 @@ module.exports = (dbPromise) => {
         }
     })
 
-    // Remove o acesso de um membro do tenant (não permite remover a si mesmo)
     router.delete('/:id', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
 

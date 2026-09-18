@@ -66,8 +66,7 @@ module.exports = function (dbPromise) {
 
             if (password) {
                 const passwordHash = await bcrypt.hash(password, 10)
-                // Mesma senha vale pra todas as contas desse e-mail (outras
-                // localidades/permissões), evitando senha divergente por conta.
+                // aplica em todas as contas desse e-mail, não só na atual
                 await dbPromise.query(
                     'UPDATE users SET password_hash = ? WHERE email = ?',
                     [passwordHash, userEmail]
@@ -92,19 +91,14 @@ module.exports = function (dbPromise) {
         }
 
         try {
-            // Cada cadastro novo ganha seu próprio tenant (dados isolados), e
-            // quem cria a conta é o admin desse tenant. O mesmo e-mail pode
-            // existir em outro tenant (ex: convidado como viewer em outro
-            // lugar); a unicidade real é (email, tenant_id).
+            // cada cadastro cria seu próprio tenant; quem cria vira admin dele
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name) VALUES (?)',
                 [locationName]
             )
             const tenantId = tenantResult.insertId
 
-            // Se esse e-mail já tem conta em outra localidade, reaproveita a
-            // mesma senha (não a que foi digitada agora) pra manter uma
-            // senha só por pessoa em todas as permissões/localidades.
+            // se o e-mail já existe em outro tenant, mantém a senha atual dele
             const [existingAccount] = await dbPromise.query(
                 'SELECT password_hash FROM users WHERE email = ? LIMIT 1',
                 [email]
@@ -118,8 +112,7 @@ module.exports = function (dbPromise) {
                 [name, email, passwordHash, tenantId]
             )
 
-            // Marca essa pessoa como dona/admin principal do tenant: nenhum
-            // outro admin consegue tirar ou alterar a permissão dela depois.
+            // dono do tenant: nenhum outro admin pode alterar a permissão dele
             await dbPromise.query(
                 'UPDATE tenants SET owner_user_id = ? WHERE id = ?',
                 [result.insertId, tenantId]
@@ -188,13 +181,11 @@ module.exports = function (dbPromise) {
                 return res.status(401).json({ message: 'Credenciais inválidas' })
             }
 
-            // E-mail único casa com uma única conta: login direto.
             if (matches.length === 1) {
                 return issueLoginResponse(res, matches[0])
             }
 
-            // Mesmo e-mail/senha válidos em mais de uma conta (ex: admin em um
-            // tenant e usuário convidado em outro): pede pra escolher qual.
+            // senha válida em mais de uma conta: pede pra escolher o tenant
             const tenantIds = [...new Set(matches.map(m => m.tenant_id))]
             const [tenants] = await dbPromise.query(
                 `SELECT id, name FROM tenants WHERE id IN (${tenantIds.map(() => '?').join(',')})`,
@@ -222,7 +213,6 @@ module.exports = function (dbPromise) {
         }
     })
 
-    // Segunda etapa do login quando o e-mail/senha bate com mais de uma conta
     router.post('/login/select', async (req, res) => {
         const { selectionToken, accountId } = req.body
 
@@ -261,8 +251,7 @@ module.exports = function (dbPromise) {
             const token = crypto.randomBytes(32).toString('hex')
             const expires = new Date(Date.now() + 3600000)
 
-            // O mesmo e-mail pode ter mais de uma conta (tenants diferentes);
-            // o mesmo token vale pra todas, evitando ambiguidade sobre qual delas.
+            // vale pra todas as contas desse e-mail, não só a primeira
             await dbPromise.query(
                 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?',
                 [token, expires, email]
@@ -330,9 +319,7 @@ module.exports = function (dbPromise) {
 
             const passwordHash = await bcrypt.hash(password, 10)
 
-            // Sincroniza em TODAS as contas desse e-mail (não só as que
-            // compartilhavam esse token específico) — admin em uma localidade
-            // e convidado em outra continuam com a mesma senha sempre.
+            // sincroniza em todas as contas desse e-mail, não só a do token
             await dbPromise.query(
                 'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE email = ?',
                 [passwordHash, users[0].email]
