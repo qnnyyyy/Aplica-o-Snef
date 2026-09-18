@@ -17,8 +17,6 @@ async function fetchWithTimeout(url, options = {}) {
     }
 }
 
-// Endpoint padrão de snapshot JPEG das câmeras VIVOTEK.
-// Outras marcas expõem caminhos diferentes; ajustar aqui se necessário.
 async function fetchSnapshot(camera, password) {
     const url = `http://${camera.location}/cgi-bin/viewer/video.jpg`
 
@@ -50,7 +48,6 @@ async function setOsdText(camera, password, text) {
     return true
 }
 
-// Ajusta o relógio interno da câmera para a data/hora informada (padrão: agora).
 async function syncDateTime(camera, password, date = new Date()) {
     const params = new URLSearchParams({
         system_time_year: date.getFullYear(),

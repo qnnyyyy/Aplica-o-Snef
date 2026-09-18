@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const nodemailer = require('nodemailer')
+const path = require('path')
+
+const LOGO_PATH = path.resolve(__dirname, '..', '..', '..', 'frontend', 'frontend', 'src', 'assets', 'snef_fr.jpg')
 
 module.exports = function (dbPromise) {
 
@@ -187,7 +190,7 @@ module.exports = function (dbPromise) {
                 html: `
                 <div style="background:#f4f2f8;padding:40px;font-family:Arial;text-align:center">
                     <div style="max-width:420px;background:#fff;border-radius:14px;padding:30px;margin:auto">
-                        <img src="https://SEU_DOMINIO/snef_fr.jpg" style="max-width:140px;margin-bottom:20px">
+                        <img src="cid:snef-logo" alt="Groupe SNEF" style="max-width:140px;margin-bottom:20px">
                         <h2 style="color:#2b2142">Redefinir senha</h2>
                         <p>Olá ${users[0].name}, clique no botão abaixo para criar uma nova senha.</p>
                         <a href="${resetLink}" style="display:inline-block;margin-top:20px;padding:14px 24px;background:#008080;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
@@ -195,7 +198,12 @@ module.exports = function (dbPromise) {
                         </a>
                         <p style="font-size:12px;color:#999;margin-top:30px">Link válido por 1 hora</p>
                     </div>
-                </div>`
+                </div>`,
+                attachments: [{
+                    filename: 'snef_fr.jpg',
+                    path: LOGO_PATH,
+                    cid: 'snef-logo'
+                }]
             })
 
             res.json({ status: 'success' })
