@@ -81,8 +81,6 @@ function renderizarContas(accounts) {
     })
 }
 
-let selectionTokenAtual = null
-
 accountSearch.addEventListener('input', () => {
     const termo = accountSearch.value.trim().toLowerCase()
     const filtradas = termo
