@@ -2,6 +2,12 @@ const form = document.getElementById('login-form')
 const errorMessage = document.getElementById('error-message')
 const accountModal = document.getElementById('account-modal')
 const accountList = document.getElementById('account-list')
+const accountSearch = document.getElementById('account-search')
+const accountEmpty = document.getElementById('account-empty')
+
+const SEARCH_THRESHOLD = 6
+let currentAccounts = []
+let selectionTokenAtual = null
 
 function entrarComToken(data) {
     localStorage.setItem('token', data.token)
@@ -46,7 +52,24 @@ form.addEventListener('submit', async (e) => {
 })
 
 function mostrarSelecaoDeConta(data) {
-    accountList.innerHTML = data.accounts.map(acc => `
+    currentAccounts = data.accounts
+    selectionTokenAtual = data.selectionToken
+
+    accountSearch.style.display = currentAccounts.length > SEARCH_THRESHOLD ? 'block' : 'none'
+    accountSearch.value = ''
+
+    renderizarContas(currentAccounts)
+    accountModal.style.display = 'flex'
+
+    if (accountSearch.style.display === 'block') {
+        setTimeout(() => accountSearch.focus(), 50)
+    }
+}
+
+function renderizarContas(accounts) {
+    accountEmpty.style.display = accounts.length === 0 ? 'block' : 'none'
+
+    accountList.innerHTML = accounts.map(acc => `
         <button type="button" class="account-option" data-id="${acc.id}">
             <strong>${acc.tenant_name}</strong>
             <span>${acc.role === 'admin' ? 'Admin' : 'Usuário'}</span>
@@ -54,11 +77,19 @@ function mostrarSelecaoDeConta(data) {
     `).join('')
 
     accountList.querySelectorAll('.account-option').forEach(btn => {
-        btn.addEventListener('click', () => escolherConta(data.selectionToken, btn.dataset.id))
+        btn.addEventListener('click', () => escolherConta(selectionTokenAtual, btn.dataset.id))
     })
-
-    accountModal.style.display = 'flex'
 }
+
+let selectionTokenAtual = null
+
+accountSearch.addEventListener('input', () => {
+    const termo = accountSearch.value.trim().toLowerCase()
+    const filtradas = termo
+        ? currentAccounts.filter(acc => acc.tenant_name.toLowerCase().includes(termo))
+        : currentAccounts
+    renderizarContas(filtradas)
+})
 
 async function escolherConta(selectionToken, accountId) {
     try {

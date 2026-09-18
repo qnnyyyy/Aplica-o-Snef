@@ -160,6 +160,28 @@
             margin-bottom: 20px;
         }
 
+        #account-search {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 15px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 6px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95em;
+            box-sizing: border-box;
+        }
+
+        #account-search:focus {
+            outline: none;
+            border-color: var(--cor-primaria);
+        }
+
+        #account-list {
+            max-height: 320px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
         .account-option {
             display: block;
             width: 100%;
@@ -225,7 +247,9 @@
         <div class="modal-content">
             <h3>Qual conta você quer acessar?</h3>
             <p class="hint">Esse e-mail tem acesso a mais de um workspace.</p>
+            <input type="text" id="account-search" placeholder="Buscar por nome do local...">
             <div id="account-list"></div>
+            <p id="account-empty" class="hint" style="display:none">Nenhum local encontrado.</p>
         </div>
     </div>
 

@@ -89,7 +89,7 @@
 
         .form-group { flex: 1; min-width: 180px; }
         .form-group label { font-weight: 600; font-size: 0.85em; display: block; margin-bottom: 5px; }
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 10px;
             border: 1px solid var(--cor-borda);
@@ -137,16 +137,65 @@
         .badge-admin { background: #e6f4ea; color: #1e7d34; }
         .badge-viewer { background: #e9ecef; color: #555; }
 
-        .btn-remove {
-            background: #fdecea;
-            color: #b3261e;
+        .btn-remove, .btn-edit-role {
             border: none;
             padding: 7px 12px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.85em;
             font-weight: bold;
+            margin-right: 6px;
         }
+
+        .btn-remove { background: #fdecea; color: #b3261e; }
+        .btn-edit-role { background: #eef6f3; color: var(--cor-azul-snef); }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .modal-content h3 { margin-top: 0; color: var(--cor-azul-snef); }
+
+        .modal-content label { font-weight: 600; font-size: 0.85em; display: block; margin: 12px 0 5px; }
+        .modal-content select, .modal-content input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-actions button {
+            flex: 1;
+            padding: 11px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-modal-save { background: var(--cor-azul-snef); color: #fff; }
+        .btn-modal-cancel { background: #e0e0e0; color: #444; }
+
+        #edit-feedback { margin-top: 10px; font-size: 0.85em; padding: 8px; border-radius: 4px; display: none; }
+        #edit-feedback.ok { display: block; background: #e6f4ea; color: #1e7d34; }
+        #edit-feedback.err { display: block; background: #fdecea; color: #b3261e; }
 
         @media (max-width: 768px) {
             #header-snef h1 { font-size: 1.3em; }
@@ -172,6 +221,17 @@
             <label>E-mail</label>
             <input type="email" id="invite-email" required>
         </div>
+        <div class="form-group">
+            <label>Permissão</label>
+            <select id="invite-role">
+                <option value="viewer" selected>Usuário (Operação)</option>
+                <option value="admin">Admin (Acesso Total)</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex-basis:100%;">
+            <label>Chave de confirmação</label>
+            <input type="password" id="invite-admin-password" placeholder="Chave fornecida pela SNEF" required>
+        </div>
         <button type="submit" id="btn-invite">Enviar convite</button>
         <div id="invite-feedback"></div>
     </form>
@@ -189,6 +249,29 @@
             </thead>
             <tbody id="team-tbody"></tbody>
         </table>
+    </div>
+</div>
+
+<div id="edit-modal" class="modal">
+    <div class="modal-content">
+        <h3 id="edit-modal-title">Editar permissão</h3>
+        <input type="hidden" id="edit-user-id">
+
+        <label>Permissão</label>
+        <select id="edit-role">
+            <option value="viewer">Usuário (Operação)</option>
+            <option value="admin">Admin (Acesso Total)</option>
+        </select>
+
+        <label>Chave de confirmação</label>
+        <input type="password" id="edit-confirmation-key" placeholder="Chave fornecida pela SNEF">
+
+        <div id="edit-feedback"></div>
+
+        <div class="modal-actions">
+            <button type="button" class="btn-modal-cancel" id="btn-edit-cancel">Cancelar</button>
+            <button type="button" class="btn-modal-save" id="btn-edit-save">Salvar</button>
+        </div>
     </div>
 </div>
 

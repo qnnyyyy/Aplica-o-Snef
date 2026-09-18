@@ -52,15 +52,22 @@ module.exports = (dbPromise) => {
         }
     })
 
-    // Convida um novo e-mail para ver os dados do tenant (sempre como "usuário", nunca admin)
+    // Convida um novo e-mail para o tenant (usuário ou admin). Sempre exige a
+    // mesma chave mestra usada no cadastro, mesmo pra convidar como usuário comum.
     router.post('/invite', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
-        const { name, email } = req.body
+        const { name, email, role, confirmationKey } = req.body
+        const grantAdmin = role === 'admin'
 
         if (!name || !email) {
             return res.status(400).json({ status: 'error', message: 'Nome e e-mail são obrigatórios' })
         }
 
+        if (confirmationKey !== process.env.REGISTRATION_KEY) {
+            return res.status(403).json({ status: 'error', message: 'Chave de confirmação inválida' })
+        }
+
         try {
+
             const [exists] = await dbPromise.query(
                 'SELECT id FROM users WHERE email = ? AND tenant_id = ?',
                 [email, req.tenantId]
@@ -74,8 +81,8 @@ module.exports = (dbPromise) => {
             const placeholderHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
 
             const [result] = await dbPromise.query(
-                "INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, 'viewer')",
-                [name, email, placeholderHash, req.tenantId]
+                'INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, ?)',
+                [name, email, placeholderHash, req.tenantId, grantAdmin ? 'admin' : 'viewer']
             )
 
             const inviteToken = crypto.randomBytes(32).toString('hex')
@@ -114,6 +121,40 @@ module.exports = (dbPromise) => {
             res.json({ status: 'success', message: 'Convite enviado com sucesso', data: { id: result.insertId } })
         } catch (err) {
             res.status(500).json({ status: 'error', message: 'Erro ao enviar convite' })
+        }
+    })
+
+    // Promove/rebaixa um membro existente do tenant. Também exige a chave
+    // mestra (mudar permissão é tão sensível quanto conceder admin no convite).
+    router.put('/:id/role', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
+        const { id } = req.params
+        const { role, confirmationKey } = req.body
+
+        if (role !== 'admin' && role !== 'viewer') {
+            return res.status(400).json({ status: 'error', message: 'Permissão inválida' })
+        }
+
+        if (Number(id) === req.user.id) {
+            return res.status(400).json({ status: 'error', message: 'Você não pode alterar sua própria permissão' })
+        }
+
+        if (confirmationKey !== process.env.REGISTRATION_KEY) {
+            return res.status(403).json({ status: 'error', message: 'Chave de confirmação inválida' })
+        }
+
+        try {
+            const [result] = await dbPromise.query(
+                'UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?',
+                [role, id, req.tenantId]
+            )
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ status: 'error', message: 'Usuário não encontrado' })
+            }
+
+            res.json({ status: 'success', message: 'Permissão atualizada' })
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao atualizar permissão' })
         }
     })
 
