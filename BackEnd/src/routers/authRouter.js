@@ -59,20 +59,21 @@ module.exports = function (dbPromise) {
     router.put('/update', simpleAuthMiddleware, async (req, res) => {
         const { name, password } = req.body
         const userId = req.user.id
+        const userEmail = req.user.email
 
         try {
+            await dbPromise.query('UPDATE users SET name = ? WHERE id = ?', [name, userId])
+
             if (password) {
                 const passwordHash = await bcrypt.hash(password, 10)
+                // Mesma senha vale pra todas as contas desse e-mail (outras
+                // localidades/permissões), evitando senha divergente por conta.
                 await dbPromise.query(
-                    'UPDATE users SET name = ?, password_hash = ? WHERE id = ?',
-                    [name, passwordHash, userId]
-                )
-            } else {
-                await dbPromise.query(
-                    'UPDATE users SET name = ? WHERE id = ?',
-                    [name, userId]
+                    'UPDATE users SET password_hash = ? WHERE email = ?',
+                    [passwordHash, userEmail]
                 )
             }
+
             res.json({ status: 'success' })
         } catch {
             res.status(500).json({ status: 'error', message: 'Erro ao atualizar' })
@@ -101,7 +102,17 @@ module.exports = function (dbPromise) {
             )
             const tenantId = tenantResult.insertId
 
-            const passwordHash = await bcrypt.hash(password, 10)
+            // Se esse e-mail já tem conta em outra localidade, reaproveita a
+            // mesma senha (não a que foi digitada agora) pra manter uma
+            // senha só por pessoa em todas as permissões/localidades.
+            const [existingAccount] = await dbPromise.query(
+                'SELECT password_hash FROM users WHERE email = ? LIMIT 1',
+                [email]
+            )
+            const passwordHash = existingAccount.length > 0
+                ? existingAccount[0].password_hash
+                : await bcrypt.hash(password, 10)
+
             const [result] = await dbPromise.query(
                 "INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, 'admin')",
                 [name, email, passwordHash, tenantId]
@@ -302,7 +313,7 @@ module.exports = function (dbPromise) {
 
         try {
             const [users] = await dbPromise.query(
-                'SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
+                'SELECT id, email FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
                 [token]
             )
 
@@ -312,11 +323,12 @@ module.exports = function (dbPromise) {
 
             const passwordHash = await bcrypt.hash(password, 10)
 
-            // Aplica em todas as contas que compartilham esse token (mesmo
-            // e-mail em tenants diferentes recebem a mesma nova senha).
+            // Sincroniza em TODAS as contas desse e-mail (não só as que
+            // compartilhavam esse token específico) — admin em uma localidade
+            // e convidado em outra continuam com a mesma senha sempre.
             await dbPromise.query(
-                'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE reset_token = ?',
-                [passwordHash, token]
+                'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE email = ?',
+                [passwordHash, users[0].email]
             )
 
             res.json({ status: 'success' })
