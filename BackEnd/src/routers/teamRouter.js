@@ -43,7 +43,12 @@ module.exports = (dbPromise) => {
     router.get('/', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
         try {
             const [rows] = await dbPromise.query(
-                'SELECT id, name, email, role, active, created_at FROM users WHERE tenant_id = ? ORDER BY role DESC, created_at',
+                `SELECT u.id, u.name, u.email, u.role, u.active, u.created_at,
+                        (u.id = t.owner_user_id) AS is_owner
+                 FROM users u
+                 JOIN tenants t ON t.id = u.tenant_id
+                 WHERE u.tenant_id = ?
+                 ORDER BY is_owner DESC, u.role DESC, u.created_at`,
                 [req.tenantId]
             )
             res.json({ status: 'success', data: rows })
@@ -143,6 +148,15 @@ module.exports = (dbPromise) => {
         }
 
         try {
+            const [tenantRows] = await dbPromise.query('SELECT owner_user_id FROM tenants WHERE id = ?', [req.tenantId])
+
+            if (tenantRows.length > 0 && Number(tenantRows[0].owner_user_id) === Number(id)) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Esse é o admin principal desta localidade — a permissão dele não pode ser alterada pelo sistema.'
+                })
+            }
+
             const [result] = await dbPromise.query(
                 'UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?',
                 [role, id, req.tenantId]

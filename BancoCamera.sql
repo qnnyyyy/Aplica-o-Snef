@@ -17,6 +17,9 @@ USE snef_people_count;
 CREATE TABLE tenants (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
+    -- Admin principal/dono da localidade. Ninguém consegue alterar a
+    -- permissão desse usuário pela aplicação — só mexendo direto no banco.
+    owner_user_id BIGINT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

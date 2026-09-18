@@ -55,17 +55,23 @@ function renderizarEquipe(membros) {
     els.tbody.innerHTML = membros.map(m => {
         const isAdmin = (m.role || '').toLowerCase() === 'admin'
         const isSelf = Number(m.id) === Number(meId)
+        const isOwner = Number(m.is_owner) === 1
 
-        const acoes = isSelf
-            ? 'Você'
-            : `
+        let acoes
+        if (isOwner) {
+            acoes = 'Admin principal'
+        } else if (isSelf) {
+            acoes = 'Você'
+        } else {
+            acoes = `
                 <button class="btn-edit-role" data-id="${m.id}" data-name="${m.name}" data-role="${isAdmin ? 'admin' : 'viewer'}">Editar</button>
                 ${!isAdmin ? `<button class="btn-remove" data-id="${m.id}">Remover</button>` : ''}
             `
+        }
 
         return `
             <tr>
-                <td>${m.name}</td>
+                <td>${m.name}${isOwner ? ' <span class="badge badge-admin" style="margin-left:6px">Dono</span>' : ''}</td>
                 <td>${m.email}</td>
                 <td><span class="badge ${isAdmin ? 'badge-admin' : 'badge-viewer'}">${isAdmin ? 'Admin' : 'Usuário'}</span></td>
                 <td>${acoes}</td>

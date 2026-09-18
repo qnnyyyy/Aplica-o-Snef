@@ -118,6 +118,13 @@ module.exports = function (dbPromise) {
                 [name, email, passwordHash, tenantId]
             )
 
+            // Marca essa pessoa como dona/admin principal do tenant: nenhum
+            // outro admin consegue tirar ou alterar a permissão dela depois.
+            await dbPromise.query(
+                'UPDATE tenants SET owner_user_id = ? WHERE id = ?',
+                [result.insertId, tenantId]
+            )
+
             const token = jwt.sign(
                 { id: result.insertId, email, tenant_id: tenantId, role: 'admin' },
                 process.env.JWT_SECRET,
