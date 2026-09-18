@@ -1,5 +1,13 @@
 const form = document.getElementById('login-form')
 const errorMessage = document.getElementById('error-message')
+const accountModal = document.getElementById('account-modal')
+const accountList = document.getElementById('account-list')
+
+function entrarComToken(data) {
+    localStorage.setItem('token', data.token)
+    localStorage.setItem('role', data.user?.role || 'viewer')
+    window.location.href = 'index.html'
+}
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -24,12 +32,55 @@ form.addEventListener('submit', async (e) => {
             return
         }
 
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('role', data.user?.role || 'viewer')
-        window.location.href = 'index.html'
+        if (data.status === 'select_account') {
+            mostrarSelecaoDeConta(data)
+            return
+        }
+
+        entrarComToken(data)
 
     } catch (err) {
         errorMessage.textContent = 'Erro ao conectar com o servidor'
         errorMessage.style.display = 'block'
     }
 })
+
+function mostrarSelecaoDeConta(data) {
+    accountList.innerHTML = data.accounts.map(acc => `
+        <button type="button" class="account-option" data-id="${acc.id}">
+            <strong>${acc.tenant_name}</strong>
+            <span>${acc.role === 'admin' ? 'Admin' : 'Usuário'}</span>
+        </button>
+    `).join('')
+
+    accountList.querySelectorAll('.account-option').forEach(btn => {
+        btn.addEventListener('click', () => escolherConta(data.selectionToken, btn.dataset.id))
+    })
+
+    accountModal.style.display = 'flex'
+}
+
+async function escolherConta(selectionToken, accountId) {
+    try {
+        const res = await fetch('http://localhost:3000/api/auth/login/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selectionToken, accountId })
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+            accountModal.style.display = 'none'
+            errorMessage.textContent = data.message || 'Erro ao selecionar conta'
+            errorMessage.style.display = 'block'
+            return
+        }
+
+        entrarComToken(data)
+    } catch (err) {
+        accountModal.style.display = 'none'
+        errorMessage.textContent = 'Erro ao conectar com o servidor'
+        errorMessage.style.display = 'block'
+    }
+}

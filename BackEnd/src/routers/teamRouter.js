@@ -61,10 +61,13 @@ module.exports = (dbPromise) => {
         }
 
         try {
-            const [exists] = await dbPromise.query('SELECT id FROM users WHERE email = ?', [email])
+            const [exists] = await dbPromise.query(
+                'SELECT id FROM users WHERE email = ? AND tenant_id = ?',
+                [email, req.tenantId]
+            )
 
             if (exists.length > 0) {
-                return res.status(409).json({ status: 'error', message: 'Esse e-mail já possui uma conta no sistema' })
+                return res.status(409).json({ status: 'error', message: 'Esse e-mail já tem acesso a este tenant' })
             }
 
             // Senha inutilizável até a pessoa convidada definir a própria senha pelo link

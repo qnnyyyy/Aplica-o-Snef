@@ -87,17 +87,10 @@ module.exports = function (dbPromise) {
         }
 
         try {
-            const [exists] = await dbPromise.query(
-                'SELECT id FROM users WHERE email = ?',
-                [email]
-            )
-
-            if (exists.length > 0) {
-                return res.status(409).json({ message: 'E-mail já cadastrado' })
-            }
-
-            // Cada cadastro novo ganha seu próprio tenant (dados isolados),
-            // e quem cria a conta é o admin desse tenant.
+            // Cada cadastro novo ganha seu próprio tenant (dados isolados), e
+            // quem cria a conta é o admin desse tenant. O mesmo e-mail pode
+            // existir em outro tenant (ex: convidado como viewer em outro
+            // lugar); a unicidade real é (email, tenant_id).
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name) VALUES (?)',
                 [`Workspace de ${name}`]
@@ -126,6 +119,29 @@ module.exports = function (dbPromise) {
         }
     })
 
+    function issueLoginResponse(res, user) {
+        const tenantId = user.tenant_id || 1
+        const role = (user.role || 'viewer').toLowerCase()
+
+        const token = jwt.sign(
+            { id: user.id, email: user.email, tenant_id: tenantId, role },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
+        )
+
+        res.json({
+            status: 'success',
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                tenant_id: tenantId,
+                role
+            }
+        })
+    }
+
     router.post('/login', async (req, res) => {
         const { email, password } = req.body
 
@@ -139,35 +155,71 @@ module.exports = function (dbPromise) {
                 return res.status(401).json({ message: 'Credenciais inválidas' })
             }
 
-            const user = users[0]
-            const valid = await bcrypt.compare(password, user.password_hash)
+            const matches = []
+            for (const candidate of users) {
+                if (await bcrypt.compare(password, candidate.password_hash)) {
+                    matches.push(candidate)
+                }
+            }
 
-            if (!valid) {
+            if (matches.length === 0) {
                 return res.status(401).json({ message: 'Credenciais inválidas' })
             }
 
-            const tenantId = user.tenant_id || 1
-            const role = (user.role || 'viewer').toLowerCase()
+            // E-mail único casa com uma única conta: login direto.
+            if (matches.length === 1) {
+                return issueLoginResponse(res, matches[0])
+            }
 
-            const token = jwt.sign(
-                { id: user.id, email: user.email, tenant_id: tenantId, role },
+            // Mesmo e-mail/senha válidos em mais de uma conta (ex: admin em um
+            // tenant e usuário convidado em outro): pede pra escolher qual.
+            const tenantIds = [...new Set(matches.map(m => m.tenant_id))]
+            const [tenants] = await dbPromise.query(
+                `SELECT id, name FROM tenants WHERE id IN (${tenantIds.map(() => '?').join(',')})`,
+                tenantIds
+            )
+            const tenantNameById = Object.fromEntries(tenants.map(t => [t.id, t.name]))
+
+            const selectionToken = jwt.sign(
+                { purpose: 'select-account', accountIds: matches.map(m => m.id) },
                 process.env.JWT_SECRET,
-                { expiresIn: '8h' }
+                { expiresIn: '5m' }
             )
 
             res.json({
-                status: 'success',
-                token,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    tenant_id: tenantId,
-                    role
-                }
+                status: 'select_account',
+                selectionToken,
+                accounts: matches.map(m => ({
+                    id: m.id,
+                    role: (m.role || 'viewer').toLowerCase(),
+                    tenant_name: tenantNameById[m.tenant_id] || 'Workspace'
+                }))
             })
         } catch {
             res.status(500).json({ message: 'Erro no login' })
+        }
+    })
+
+    // Segunda etapa do login quando o e-mail/senha bate com mais de uma conta
+    router.post('/login/select', async (req, res) => {
+        const { selectionToken, accountId } = req.body
+
+        try {
+            const decoded = jwt.verify(selectionToken, process.env.JWT_SECRET)
+
+            if (decoded.purpose !== 'select-account' || !decoded.accountIds.includes(Number(accountId))) {
+                return res.status(403).json({ message: 'Seleção inválida' })
+            }
+
+            const [users] = await dbPromise.query('SELECT * FROM users WHERE id = ?', [accountId])
+
+            if (users.length === 0) {
+                return res.status(404).json({ message: 'Conta não encontrada' })
+            }
+
+            issueLoginResponse(res, users[0])
+        } catch {
+            res.status(403).json({ message: 'Seleção expirada, faça login novamente' })
         }
     })
 
@@ -187,9 +239,11 @@ module.exports = function (dbPromise) {
             const token = crypto.randomBytes(32).toString('hex')
             const expires = new Date(Date.now() + 3600000)
 
+            // O mesmo e-mail pode ter mais de uma conta (tenants diferentes);
+            // o mesmo token vale pra todas, evitando ambiguidade sobre qual delas.
             await dbPromise.query(
-                'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
-                [token, expires, users[0].id]
+                'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?',
+                [token, expires, email]
             )
 
             const resetLink = `${process.env.FRONT_URL}/novasenha.html?token=${token}`
@@ -254,9 +308,11 @@ module.exports = function (dbPromise) {
 
             const passwordHash = await bcrypt.hash(password, 10)
 
+            // Aplica em todas as contas que compartilham esse token (mesmo
+            // e-mail em tenants diferentes recebem a mesma nova senha).
             await dbPromise.query(
-                'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
-                [passwordHash, users[0].id]
+                'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE reset_token = ?',
+                [passwordHash, token]
             )
 
             res.json({ status: 'success' })

@@ -261,7 +261,7 @@ CREATE TABLE users (
     tenant_id BIGINT NOT NULL DEFAULT 1,
 
     name VARCHAR(150) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
 
     role ENUM('ADMIN','MANAGER','OPERATOR','VIEWER') DEFAULT 'VIEWER',
@@ -274,6 +274,10 @@ CREATE TABLE users (
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Mesmo e-mail pode ter uma conta admin em um tenant e viewer em outro;
+    -- só não pode repetir dentro do mesmo tenant.
+    UNIQUE KEY uq_users_email_tenant (email, tenant_id),
 
     CONSTRAINT fk_users_tenant
         FOREIGN KEY (tenant_id)

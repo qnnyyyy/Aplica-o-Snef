@@ -126,6 +126,65 @@
             font-size: 0.9em;
             display: none;
         }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 360px;
+            text-align: left;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--cor-texto);
+            text-align: center;
+        }
+
+        .modal-content p.hint {
+            font-size: 0.85em;
+            color: #777;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .account-option {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 14px;
+            margin-bottom: 10px;
+            border: 1.5px solid var(--cor-borda);
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .account-option:hover {
+            border-color: var(--cor-primaria);
+        }
+
+        .account-option strong { display: block; color: var(--cor-texto); }
+        .account-option span {
+            font-size: 0.8em;
+            font-weight: bold;
+            color: var(--cor-primaria);
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
@@ -160,6 +219,14 @@
         </div>
 
         <div class="error-message" id="error-message"></div>
+    </div>
+
+    <div id="account-modal" class="modal">
+        <div class="modal-content">
+            <h3>Qual conta você quer acessar?</h3>
+            <p class="hint">Esse e-mail tem acesso a mais de um workspace.</p>
+            <div id="account-list"></div>
+        </div>
     </div>
 
     <script type="module" src="./src/controllers/login.js"></script>
