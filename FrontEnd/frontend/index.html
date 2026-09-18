@@ -277,10 +277,11 @@
         <div class="dropdown">
             <button class="dropdown-button" id="dropBtn">Configurações</button>
             <div class="dropdown-menu" id="dropMenu">
-                <a href="station.html">Estação</a>
-                <a href="zona.html">Zona</a>
-                <a href="camera.html">Câmera</a>
+                <a href="station.html" class="admin-only">Estação</a>
+                <a href="zona.html" class="admin-only">Zona</a>
+                <a href="camera.html" class="admin-only">Câmera</a>
                 <a href="liveview.html">Live View</a>
+                <a href="permissoes.html" class="admin-only">Permissões</a>
                 <a href="usuario.html">Usuário</a>
             </div>
         </div>
@@ -471,6 +472,10 @@
         dropMenu.style.display = dropMenu.style.display === 'block' ? 'none' : 'block';
     });
     document.addEventListener('click', () => dropMenu.style.display = 'none');
+
+    if ((localStorage.getItem('role') || '').toLowerCase() !== 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
 </script>
 
 </body>

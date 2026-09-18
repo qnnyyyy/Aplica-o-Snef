@@ -25,6 +25,7 @@ form.addEventListener('submit', async (e) => {
         }
 
         localStorage.setItem('token', data.token)
+        localStorage.setItem('role', data.user?.role || 'viewer')
         window.location.href = 'index.html'
 
     } catch (err) {

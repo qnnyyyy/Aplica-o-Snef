@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>SNEF | Permissões</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+            if ((localStorage.getItem('role') || '').toLowerCase() !== 'admin') window.location.href = 'index.html';
+        })();
+    </script>
+    <style>
+        :root {
+            --cor-fundo: #F4F7F9;
+            --cor-azul-snef: #368D6D;
+            --cor-hover: #286B52;
+            --cor-borda: #E0E0E0;
+            --cor-texto: #333;
+            --cor-logout: #D9534F;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--cor-fundo);
+            padding: 15px;
+            margin: 0;
+            color: var(--cor-texto);
+        }
+
+        #header-snef {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1000px;
+            margin: 0 auto 20px auto;
+            border-bottom: 2px solid var(--cor-borda);
+            padding-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        #header-snef h1 {
+            color: var(--cor-azul-snef);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.6em;
+        }
+
+        .animated-button, .btn-logout {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-decoration: none;
+        }
+
+        .animated-button { background: var(--cor-azul-snef); color: #fff; }
+        .btn-logout { background: var(--cor-logout); color: #fff; }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #FFF;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h2 { color: var(--cor-azul-snef); margin-top: 0; }
+
+        #invite-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--cor-borda);
+        }
+
+        .form-group { flex: 1; min-width: 180px; }
+        .form-group label { font-weight: 600; font-size: 0.85em; display: block; margin-bottom: 5px; }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 4px;
+            font-family: 'Montserrat', sans-serif;
+            box-sizing: border-box;
+        }
+
+        #btn-invite {
+            background: var(--cor-azul-snef);
+            color: #fff;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        #btn-invite:disabled { background: #ccc; cursor: not-allowed; }
+
+        #invite-feedback { width: 100%; font-size: 0.85em; padding: 10px; border-radius: 6px; display: none; }
+        #invite-feedback.ok { display: block; background: #e6f4ea; color: #1e7d34; }
+        #invite-feedback.err { display: block; background: #fdecea; color: #b3261e; }
+
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th {
+            background-color: #f8f9fa;
+            color: var(--cor-azul-snef);
+            text-transform: uppercase;
+            font-size: 0.8em;
+            padding: 12px 15px;
+            border-bottom: 2px solid var(--cor-borda);
+            text-align: left;
+        }
+        td { padding: 12px 15px; border-bottom: 1px solid var(--cor-borda); font-size: 0.9em; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+        .badge-admin { background: #e6f4ea; color: #1e7d34; }
+        .badge-viewer { background: #e9ecef; color: #555; }
+
+        .btn-remove {
+            background: #fdecea;
+            color: #b3261e;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            #header-snef h1 { font-size: 1.3em; }
+        }
+    </style>
+</head>
+<body>
+
+<header id="header-snef">
+    <a href="index.html" style="text-decoration:none"><button class="animated-button">Home</button></a>
+    <h1>Permissões</h1>
+    <button id="btn-logout" class="btn-logout">Sair</button>
+</header>
+
+<div class="container">
+    <h2>Convidar acesso</h2>
+    <form id="invite-form">
+        <div class="form-group">
+            <label>Nome</label>
+            <input type="text" id="invite-name" required>
+        </div>
+        <div class="form-group">
+            <label>E-mail</label>
+            <input type="email" id="invite-email" required>
+        </div>
+        <button type="submit" id="btn-invite">Enviar convite</button>
+        <div id="invite-feedback"></div>
+    </form>
+
+    <h2>Membros com acesso</h2>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Permissão</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="team-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module" src="./src/controllers/permissoes.js"></script>
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+</script>
+
+</body>
+</html>

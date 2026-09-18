@@ -258,31 +258,33 @@
         <form id="liveForm">
             <input type="hidden" id="editId">
 
-            <label>Nome da Câmera</label>
-            <input type="text" id="editName" required>
+            <div id="admin-edit-section" class="admin-only">
+                <label>Nome da Câmera</label>
+                <input type="text" id="editName" required>
 
-            <label>Nome que aparece na câmera (OSD)</label>
-            <input type="text" id="editOsd" placeholder="Ex: Catraca Entrada">
-            <div class="hint">Texto sobreposto na própria imagem da câmera.</div>
+                <label>Nome que aparece na câmera (OSD)</label>
+                <input type="text" id="editOsd" placeholder="Ex: Catraca Entrada">
+                <div class="hint">Texto sobreposto na própria imagem da câmera.</div>
 
-            <label>IP da Câmera</label>
-            <input type="text" id="editIp" required>
-            <div class="hint">Mantém o IP atual se não for alterado.</div>
+                <label>IP da Câmera</label>
+                <input type="text" id="editIp" required>
+                <div class="hint">Mantém o IP atual se não for alterado.</div>
 
-            <label>Usuário de acesso à câmera</label>
-            <input type="text" id="editUser" placeholder="admin">
+                <label>Usuário de acesso à câmera</label>
+                <input type="text" id="editUser" placeholder="admin">
 
-            <label>Senha de acesso à câmera</label>
-            <input type="password" id="editPassword" placeholder="Deixe em branco para manter a atual">
+                <label>Senha de acesso à câmera</label>
+                <input type="password" id="editPassword" placeholder="Deixe em branco para manter a atual">
 
-            <div id="modal-feedback"></div>
+                <div id="modal-feedback"></div>
 
-            <div class="modal-actions">
-                <button type="button" class="btn-sync" id="btn-sync-time">🕒 Sincronizar Data/Hora</button>
+                <div class="modal-actions">
+                    <button type="button" class="btn-sync" id="btn-sync-time">🕒 Sincronizar Data/Hora</button>
+                </div>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel" id="btn-close-modal">Fechar</button>
-                <button type="submit" class="btn-save">Salvar</button>
+                <button type="submit" class="btn-save admin-only" id="btn-save-live">Salvar</button>
             </div>
         </form>
     </div>
@@ -294,6 +296,10 @@
         localStorage.clear();
         window.location.href = 'login.html';
     });
+
+    if ((localStorage.getItem('role') || '').toLowerCase() !== 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
 </script>
 
 </body>

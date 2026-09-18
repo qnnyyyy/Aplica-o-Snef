@@ -46,6 +46,9 @@ app.use('/api/zones', zonaRouter(dbPromise))
 const stationRouter = require('./routers/stationRouter')
 app.use('/api/stations', stationRouter(dbPromise))
 
+const teamRouter = require('./routers/teamRouter')
+app.use('/api/team', teamRouter(dbPromise))
+
 app.post('/vivotek/push', async (req, res) => {
     const payload = req.body
 
@@ -103,14 +106,14 @@ app.post('/vivotek/push', async (req, res) => {
 
                 if (event.Direction_IN !== undefined) {
                     await dbPromise.query(
-                        'INSERT INTO people_count_events (camera_id, zone_id, direction, count, event_time, tenant_id) VALUES (?, ?, "IN", ?, ?, ?)',
+                        "INSERT INTO people_count_events (camera_id, zone_id, direction, count, event_time, tenant_id) VALUES (?, ?, 'IN', ?, ?, ?)",
                         [internalId, zoneId, event.Direction_IN, eventTime, tenantId]
                     )
                 }
 
                 if (event.Direction_OUT !== undefined) {
                     await dbPromise.query(
-                        'INSERT INTO people_count_events (camera_id, zone_id, direction, count, event_time, tenant_id) VALUES (?, ?, "OUT", ?, ?, ?)',
+                        "INSERT INTO people_count_events (camera_id, zone_id, direction, count, event_time, tenant_id) VALUES (?, ?, 'OUT', ?, ?, ?)",
                         [internalId, zoneId, event.Direction_OUT, eventTime, tenantId]
                     )
                 }

@@ -41,13 +41,16 @@ module.exports = function (dbPromise) {
     router.get('/me', simpleAuthMiddleware, async (req, res) => {
         try {
             const [rows] = await dbPromise.query(
-                'SELECT name, email FROM users WHERE id = ?',
+                'SELECT name, email, role FROM users WHERE id = ?',
                 [req.user.id]
             )
             if (rows.length === 0) {
                 return res.status(404).json({ message: 'Usuário não encontrado' })
             }
-            res.json({ status: 'success', data: rows[0] })
+            res.json({
+                status: 'success',
+                data: { ...rows[0], role: (rows[0].role || 'viewer').toLowerCase() }
+            })
         } catch {
             res.status(500).json({ status: 'error', message: 'Erro interno' })
         }
@@ -93,14 +96,22 @@ module.exports = function (dbPromise) {
                 return res.status(409).json({ message: 'E-mail já cadastrado' })
             }
 
+            // Cada cadastro novo ganha seu próprio tenant (dados isolados),
+            // e quem cria a conta é o admin desse tenant.
+            const [tenantResult] = await dbPromise.query(
+                'INSERT INTO tenants (name) VALUES (?)',
+                [`Workspace de ${name}`]
+            )
+            const tenantId = tenantResult.insertId
+
             const passwordHash = await bcrypt.hash(password, 10)
             const [result] = await dbPromise.query(
-                'INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, 1, "viewer")',
-                [name, email, passwordHash]
+                "INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, 'admin')",
+                [name, email, passwordHash, tenantId]
             )
 
             const token = jwt.sign(
-                { id: result.insertId, email, tenant_id: 1, role: 'viewer' },
+                { id: result.insertId, email, tenant_id: tenantId, role: 'admin' },
                 process.env.JWT_SECRET,
                 { expiresIn: '8h' }
             )
@@ -108,7 +119,7 @@ module.exports = function (dbPromise) {
             res.json({
                 status: 'success',
                 token,
-                user: { id: result.insertId, name, email }
+                user: { id: result.insertId, name, email, tenant_id: tenantId, role: 'admin' }
             })
         } catch {
             res.status(500).json({ message: 'Erro ao cadastrar' })
@@ -136,7 +147,7 @@ module.exports = function (dbPromise) {
             }
 
             const tenantId = user.tenant_id || 1
-            const role = user.role || 'viewer'
+            const role = (user.role || 'viewer').toLowerCase()
 
             const token = jwt.sign(
                 { id: user.id, email: user.email, tenant_id: tenantId, role },

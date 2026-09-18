@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const tenantMiddleware = require('../tenantMiddleware')
+const adminMiddleware = require('../adminMiddleware')
 const cameraCrypto = require('../utils/cameraCrypto')
 const vivotekClient = require('../services/vivotekClient')
 
@@ -64,7 +65,7 @@ module.exports = (db) => {
     })
 
     // Atualiza nome, OSD, IP e credenciais da câmera; tenta refletir o OSD na própria câmera
-    router.put('/:id/live-settings', tenantMiddleware, async (req, res) => {
+    router.put('/:id/live-settings', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { name, osd_text, location, camera_user, camera_password } = req.body
 
@@ -120,7 +121,7 @@ module.exports = (db) => {
     })
 
     // Sincroniza o relógio interno da câmera com a data/hora atual (ou informada)
-    router.post('/:id/sync-time', tenantMiddleware, async (req, res) => {
+    router.post('/:id/sync-time', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { datetime } = req.body
 
@@ -146,7 +147,7 @@ module.exports = (db) => {
         }
     })
 
-    router.put('/:id', tenantMiddleware, async (req, res) => {
+    router.put('/:id', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { name, model, location, enabled, zone_id } = req.body
 
@@ -207,7 +208,7 @@ module.exports = (db) => {
         }
     })
 
-    router.post('/', tenantMiddleware, async (req, res) => {
+    router.post('/', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { camera_id, name, model, location, zone_id } = req.body
 
         try {
@@ -292,7 +293,7 @@ module.exports = (db) => {
         }
     })
 
-    router.delete('/:id', tenantMiddleware, async (req, res) => {
+    router.delete('/:id', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
 
         try {

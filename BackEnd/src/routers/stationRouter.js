@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const tenantMiddleware = require('../tenantMiddleware');
+const adminMiddleware = require('../adminMiddleware');
 
 module.exports = (dbPromise) => {
     
@@ -17,7 +18,7 @@ module.exports = (dbPromise) => {
         }
     });
 
-    router.post('/', tenantMiddleware, async (req, res) => {
+    router.post('/', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { name, location } = req.body;
         
         if (!name) {
@@ -40,7 +41,7 @@ module.exports = (dbPromise) => {
         }
     });
 
-    router.put('/:id', tenantMiddleware, async (req, res) => {
+    router.put('/:id', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params;
         const { name, location } = req.body;
 
@@ -61,7 +62,7 @@ module.exports = (dbPromise) => {
         }
     });
 
-    router.delete('/:id', tenantMiddleware, async (req, res) => {
+    router.delete('/:id', tenantMiddleware, adminMiddleware, async (req, res) => {
         try {
             const [zonesCheck] = await dbPromise.query(
                 'SELECT COUNT(*) as count FROM zones WHERE station_id = ? AND tenant_id = ?',
