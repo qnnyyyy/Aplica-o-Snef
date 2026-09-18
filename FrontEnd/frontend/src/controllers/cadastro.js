@@ -9,9 +9,11 @@ form.addEventListener('submit', async (e) => {
     errorMessage.style.display = 'none'
 
     const name = document.getElementById('name').value.trim()
+    const locationName = document.getElementById('location-name').value.trim()
     const email = document.getElementById('email').value.trim()
     const password = document.getElementById('password').value
     const confirm = document.getElementById('confirm-password').value
+    const confirmationKey = document.getElementById('confirmation-key').value
 
     if (password !== confirm) {
         errorMessage.textContent = 'As senhas não coincidem'
@@ -23,7 +25,7 @@ form.addEventListener('submit', async (e) => {
         const res = await fetch('http://localhost:3000/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({ name, email, password, locationName, confirmationKey })
         })
 
         const data = await res.json()

@@ -80,10 +80,14 @@ module.exports = function (dbPromise) {
     })
 
     router.post('/register', async (req, res) => {
-        const { name, email, password } = req.body
+        const { name, email, password, locationName, confirmationKey } = req.body
 
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !locationName) {
             return res.status(400).json({ message: 'Dados inválidos' })
+        }
+
+        if (confirmationKey !== process.env.REGISTRATION_KEY) {
+            return res.status(403).json({ message: 'Chave de confirmação inválida' })
         }
 
         try {
@@ -93,7 +97,7 @@ module.exports = function (dbPromise) {
             // lugar); a unicidade real é (email, tenant_id).
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name) VALUES (?)',
-                [`Workspace de ${name}`]
+                [locationName]
             )
             const tenantId = tenantResult.insertId
 
