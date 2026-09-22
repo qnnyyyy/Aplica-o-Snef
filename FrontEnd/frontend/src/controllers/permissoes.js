@@ -42,9 +42,16 @@ const els = {
     pendingCount: document.getElementById('pending-count'),
 
     capacityThreshold: document.getElementById('capacity-threshold'),
-    slackWebhook: document.getElementById('slack-webhook'),
     btnSaveSettings: document.getElementById('btn-save-settings'),
-    settingsFeedback: document.getElementById('settings-feedback')
+    settingsFeedback: document.getElementById('settings-feedback'),
+
+    maintenanceModal: document.getElementById('maintenance-modal'),
+    maintenanceUserId: document.getElementById('maintenance-user-id'),
+    maintenanceModalTitle: document.getElementById('maintenance-modal-title'),
+    maintenancePhone: document.getElementById('maintenance-phone'),
+    maintenanceFeedback: document.getElementById('maintenance-feedback'),
+    btnMaintenanceSave: document.getElementById('btn-maintenance-save'),
+    btnMaintenanceCancel: document.getElementById('btn-maintenance-cancel')
 }
 
 async function carregarEquipe() {
@@ -74,6 +81,7 @@ function renderizarEquipe(membros) {
         const isDono = role === 'dono'
         const isSelf = Number(m.id) === Number(meId)
         const isOwner = isDono || Number(m.is_owner) === 1
+        const isMaintenance = Number(m.is_maintenance) === 1
 
         let acoes
         if (isOwner) {
@@ -87,11 +95,15 @@ function renderizarEquipe(membros) {
             `
         }
 
+        acoes += isMaintenance
+            ? `<button class="btn-maintenance" data-id="${m.id}" data-enabled="0">Remover Manutenção</button>`
+            : `<button class="btn-maintenance" data-id="${m.id}" data-name="${m.name}" data-phone="${m.phone_number || ''}" data-enabled="1">🔧 Manutenção</button>`
+
         const permissaoLabel = isDono ? 'Dono' : (isAdmin ? 'Admin' : 'Usuário')
 
         return `
             <tr>
-                <td>${m.name}</td>
+                <td>${m.name}${isMaintenance ? ' <span class="badge badge-maintenance">🔧 Manutenção</span>' : ''}</td>
                 <td>${m.email}</td>
                 <td><span class="badge ${isDono || isAdmin ? 'badge-admin' : 'badge-viewer'}">${permissaoLabel}</span></td>
                 <td>${acoes}</td>
@@ -105,6 +117,16 @@ function renderizarEquipe(membros) {
 
     els.tbody.querySelectorAll('.btn-edit-role').forEach(btn => {
         btn.addEventListener('click', () => abrirEdicao(btn.dataset.id, btn.dataset.name, btn.dataset.role))
+    })
+
+    els.tbody.querySelectorAll('.btn-maintenance').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.enabled === '1') {
+                abrirManutencao(btn.dataset.id, btn.dataset.name, btn.dataset.phone)
+            } else {
+                desativarManutencao(btn.dataset.id)
+            }
+        })
     })
 }
 
@@ -225,6 +247,77 @@ els.btnEditSave.addEventListener('click', async () => {
     }
 })
 
+function abrirManutencao(id, name, currentPhone) {
+    els.maintenanceUserId.value = id
+    els.maintenanceModalTitle.textContent = `🔧 Marcar ${name} como Manutenção`
+    els.maintenancePhone.value = currentPhone || ''
+    els.maintenanceFeedback.textContent = ''
+    els.maintenanceFeedback.className = ''
+    els.maintenanceModal.style.display = 'flex'
+}
+
+function fecharManutencao() {
+    els.maintenanceModal.style.display = 'none'
+}
+
+els.btnMaintenanceCancel.addEventListener('click', fecharManutencao)
+els.maintenanceModal.addEventListener('click', (e) => {
+    if (e.target === els.maintenanceModal) fecharManutencao()
+})
+
+els.btnMaintenanceSave.addEventListener('click', async () => {
+    const id = els.maintenanceUserId.value
+
+    els.btnMaintenanceSave.disabled = true
+    els.btnMaintenanceSave.textContent = 'Salvando...'
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/${id}/maintenance`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ enabled: true, phone: els.maintenancePhone.value })
+        })
+        const result = await res.json()
+
+        if (!res.ok) {
+            els.maintenanceFeedback.textContent = result.message || 'Erro ao marcar Manutenção'
+            els.maintenanceFeedback.className = 'err'
+            return
+        }
+
+        fecharManutencao()
+        carregarEquipe()
+    } catch (err) {
+        els.maintenanceFeedback.textContent = 'Erro ao comunicar com o servidor.'
+        els.maintenanceFeedback.className = 'err'
+    } finally {
+        els.btnMaintenanceSave.disabled = false
+        els.btnMaintenanceSave.textContent = 'Salvar'
+    }
+})
+
+async function desativarManutencao(id) {
+    if (!confirm('Remover a tag de Manutenção dessa pessoa?')) return
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/${id}/maintenance`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ enabled: false })
+        })
+        const result = await res.json()
+
+        if (!res.ok) {
+            alert(result.message || 'Erro ao remover tag de Manutenção')
+            return
+        }
+
+        carregarEquipe()
+    } catch (err) {
+        alert('Erro ao comunicar com o servidor')
+    }
+}
+
 async function carregarChaveApi() {
     try {
         const res = await fetch(`${API_ROOT}/tenant-info`, {
@@ -235,7 +328,6 @@ async function carregarChaveApi() {
         if (result.status === 'success') {
             els.apiKeyValue.value = result.data.tenant.api_key || ''
             els.capacityThreshold.value = result.data.tenant.capacity_alert_threshold || ''
-            els.slackWebhook.value = result.data.tenant.slack_webhook_url || ''
         }
     } catch (err) {
         els.apiKeyValue.value = 'Erro ao carregar'
@@ -255,8 +347,7 @@ els.btnSaveSettings.addEventListener('click', async () => {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({
-                capacityThreshold: els.capacityThreshold.value.trim(),
-                slackWebhookUrl: els.slackWebhook.value.trim()
+                capacityThreshold: els.capacityThreshold.value.trim()
             })
         })
         const result = await res.json()

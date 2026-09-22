@@ -210,7 +210,7 @@ module.exports = (dbPromise) => {
             const isAdmin = role === 'admin' || role === 'dono';
 
             const [tenant] = await dbPromise.query(
-                `SELECT id, name${isAdmin ? ', api_key, capacity_alert_threshold, slack_webhook_url' : ''} FROM tenants WHERE id = ?`,
+                `SELECT id, name${isAdmin ? ', api_key, capacity_alert_threshold' : ''} FROM tenants WHERE id = ?`,
                 [req.tenantId]
             );
 
@@ -256,7 +256,7 @@ module.exports = (dbPromise) => {
             return res.status(403).json({ status: 'error', message: 'Apenas admins podem alterar essas configurações' });
         }
 
-        const { capacityThreshold, slackWebhookUrl } = req.body;
+        const { capacityThreshold } = req.body;
 
         const threshold = capacityThreshold === '' || capacityThreshold === null || capacityThreshold === undefined
             ? null
@@ -268,8 +268,8 @@ module.exports = (dbPromise) => {
 
         try {
             await dbPromise.query(
-                'UPDATE tenants SET capacity_alert_threshold = ?, slack_webhook_url = ? WHERE id = ?',
-                [threshold, slackWebhookUrl || null, req.tenantId]
+                'UPDATE tenants SET capacity_alert_threshold = ? WHERE id = ?',
+                [threshold, req.tenantId]
             );
             res.json({ status: 'success' });
         } catch (err) {

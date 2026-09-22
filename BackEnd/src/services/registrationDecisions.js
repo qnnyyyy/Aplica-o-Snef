@@ -30,8 +30,8 @@ async function approveRegistration(dbPromise, pending, decidedBy) {
     const finalHash = otherAccount.length > 0 ? otherAccount[0].password_hash : pending.password_hash
 
     const [result] = await dbPromise.query(
-        'INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, ?)',
-        [pending.name, pending.email, finalHash, pending.tenant_id, pending.requested_role]
+        'INSERT INTO users (name, email, password_hash, tenant_id, role, phone_number) VALUES (?, ?, ?, ?, ?, ?)',
+        [pending.name, pending.email, finalHash, pending.tenant_id, pending.requested_role, pending.phone_number || null]
     )
 
     await dbPromise.query(

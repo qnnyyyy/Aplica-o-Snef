@@ -27,9 +27,6 @@ CREATE TABLE tenants (
     capacity_alert_threshold INT NULL,
     capacity_alert_sent_at DATETIME NULL,
 
-    -- Webhook do Slack pra receber os mesmos alertas que já vão por e-mail
-    slack_webhook_url VARCHAR(500) NULL,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -283,6 +280,11 @@ CREATE TABLE users (
     role ENUM('ADMIN','MANAGER','OPERATOR','VIEWER','DONO') DEFAULT 'VIEWER',
     active BOOLEAN DEFAULT TRUE,
 
+    -- "Manutenção" é só uma etiqueta visual/contato, não uma permissão — não afeta acesso.
+    -- Quem tem a tag recebe os alertas de câmera offline também por WhatsApp.
+    is_maintenance BOOLEAN DEFAULT FALSE,
+    phone_number VARCHAR(30) NULL,
+
     last_login DATETIME NULL,
 
     reset_token VARCHAR(255) NULL,
@@ -317,6 +319,7 @@ CREATE TABLE pending_registrations (
     password_hash VARCHAR(255) NOT NULL,
     requested_role ENUM('ADMIN','VIEWER') NOT NULL,
     status ENUM('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING',
+    phone_number VARCHAR(30) NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     decided_at DATETIME NULL,

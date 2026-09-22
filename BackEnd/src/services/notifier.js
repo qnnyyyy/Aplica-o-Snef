@@ -1,18 +1,20 @@
-async function notifySlack(dbPromise, tenantId, message) {
+// webhook único pra todo o sistema — não é por localidade.
+// Aponta pro serviço de envio de WhatsApp que a SNEF configurar (Zapier, Make, etc).
+// Espera receber um POST { phone, message } e cuidar do envio de verdade.
+async function notifyWhatsApp(phone, message) {
+    const webhookUrl = process.env.WHATSAPP_WEBHOOK_URL
+
+    if (!webhookUrl || !phone) return
+
     try {
-        const [rows] = await dbPromise.query('SELECT slack_webhook_url FROM tenants WHERE id = ?', [tenantId])
-        const webhookUrl = rows[0]?.slack_webhook_url
-
-        if (!webhookUrl) return
-
         await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: message })
+            body: JSON.stringify({ phone, message })
         })
     } catch (err) {
-        console.error('Erro ao notificar Slack:', err.message)
+        console.error('Erro ao notificar WhatsApp:', err.message)
     }
 }
 
-module.exports = { notifySlack }
+module.exports = { notifyWhatsApp }

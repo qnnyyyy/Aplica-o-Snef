@@ -1,6 +1,6 @@
 const cron = require('node-cron')
 const { transporter, logoAttachment } = require('../utils/mailer')
-const { notifySlack } = require('./notifier')
+const { notifyWhatsApp } = require('./notifier')
 
 const OFFLINE_THRESHOLD_MINUTES = 15
 const ALERT_COOLDOWN_HOURS = 6
@@ -52,7 +52,12 @@ async function verificarCamerasOffline(dbPromise) {
         }
 
         const nomes = cameras.map(c => c.name || `Câmera #${c.id}`).join(', ')
-        notifySlack(dbPromise, tenantId, `📷 Câmera(s) sem sinal há mais de ${OFFLINE_THRESHOLD_MINUTES} min: ${nomes}`)
+
+        const [manutencao] = await dbPromise.query(
+            "SELECT phone_number FROM users WHERE tenant_id = ? AND is_maintenance = TRUE AND phone_number IS NOT NULL",
+            [tenantId]
+        )
+        manutencao.forEach(m => notifyWhatsApp(m.phone_number, `📷 Câmera(s) sem sinal há mais de ${OFFLINE_THRESHOLD_MINUTES} min: ${nomes}`))
 
         await dbPromise.query(
             `UPDATE cameras SET last_alert_sent_at = NOW() WHERE id IN (${cameras.map(() => '?').join(',')})`,
@@ -112,8 +117,6 @@ async function verificarSuperlotacao(dbPromise) {
                 attachments: [logoAttachment()]
             }).catch(err => console.error('Erro ao enviar alerta de superlotação:', err.message))
         }
-
-        notifySlack(dbPromise, tenant.id, `🚨 ${tenant.name} está com ${ocupacao} pessoas no local, acima do limite de ${tenant.capacity_alert_threshold}.`)
 
         await dbPromise.query('UPDATE tenants SET capacity_alert_sent_at = NOW() WHERE id = ?', [tenant.id])
     }

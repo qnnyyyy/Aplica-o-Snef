@@ -41,6 +41,7 @@ module.exports = (dbPromise) => {
         try {
             const [rows] = await dbPromise.query(
                 `SELECT u.id, u.name, u.email, u.role, u.active, u.created_at,
+                        u.is_maintenance, u.phone_number,
                         (u.id = t.owner_user_id) AS is_owner
                  FROM users u
                  JOIN tenants t ON t.id = u.tenant_id
@@ -175,6 +176,37 @@ module.exports = (dbPromise) => {
             res.json({ status: 'success', message: 'Permissão atualizada' })
         } catch (err) {
             res.status(500).json({ status: 'error', message: 'Erro ao atualizar permissão' })
+        }
+    })
+
+    // "Manutenção" é só uma etiqueta/contato, não uma permissão — por isso não bloqueia
+    // auto-atribuição como o /role bloqueia (admin/dono pode marcar a si mesmo).
+    router.put('/:id/maintenance', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
+        const { id } = req.params
+        const { enabled, phone } = req.body
+
+        if (enabled && (!phone || !phone.trim())) {
+            return res.status(400).json({ status: 'error', message: 'Informe o número de telefone' })
+        }
+
+        try {
+            const [result] = enabled
+                ? await dbPromise.query(
+                    'UPDATE users SET is_maintenance = TRUE, phone_number = ? WHERE id = ? AND tenant_id = ?',
+                    [phone.trim(), id, req.tenantId]
+                )
+                : await dbPromise.query(
+                    'UPDATE users SET is_maintenance = FALSE WHERE id = ? AND tenant_id = ?',
+                    [id, req.tenantId]
+                )
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ status: 'error', message: 'Usuário não encontrado' })
+            }
+
+            res.json({ status: 'success', message: enabled ? 'Marcado como Manutenção' : 'Tag de Manutenção removida' })
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao atualizar tag de Manutenção' })
         }
     })
 

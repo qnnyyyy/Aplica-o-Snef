@@ -126,6 +126,7 @@ const locationNameInput = document.getElementById('location-name')
 const groupLocationSelect = document.getElementById('group-location-select')
 const groupLocationName = document.getElementById('group-location-name')
 const groupConfirmationKey = document.getElementById('group-confirmation-key')
+const groupPhone = document.getElementById('group-phone')
 const approvalHint = document.getElementById('approval-hint')
 
 function atualizarCamposPorTipo() {
@@ -134,6 +135,7 @@ function atualizarCamposPorTipo() {
     groupLocationSelect.style.display = tipo === 'owner' ? 'none' : 'block'
     groupLocationName.style.display = tipo === 'owner' ? 'block' : 'none'
     groupConfirmationKey.style.display = tipo === 'viewer' ? 'none' : 'block'
+    groupPhone.style.display = tipo === 'viewer' ? 'block' : 'none'
     approvalHint.style.display = tipo === 'owner' ? 'none' : 'block'
 
     confirmationKeyInput.placeholder = tipo === 'owner'
@@ -202,10 +204,12 @@ form.addEventListener('submit', async (e) => {
                 return
             }
 
+            const phone = document.getElementById('phone').value.trim()
+
             res = await fetch('/api/auth/request-registration', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password, role: accountType, tenantId: locationSearchId.value, confirmationKey })
+                body: JSON.stringify({ name, email, password, role: accountType, tenantId: locationSearchId.value, confirmationKey, phone })
             })
             data = await res.json()
 
