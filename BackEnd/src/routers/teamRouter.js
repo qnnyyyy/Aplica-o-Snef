@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const adminMiddleware = require('../adminMiddleware')
 const { transporter, logoAttachment } = require('../utils/mailer')
+const { approveRegistration, rejectRegistration } = require('../services/registrationDecisions')
 
 module.exports = (dbPromise) => {
 
@@ -229,53 +230,13 @@ module.exports = (dbPromise) => {
                 return res.status(404).json({ status: 'error', message: 'Pedido não encontrado' })
             }
 
-            const pending = rows[0]
+            const result = await approveRegistration(dbPromise, rows[0], req.user.email)
 
-            const [existing] = await dbPromise.query('SELECT id FROM users WHERE email = ? AND tenant_id = ?', [pending.email, req.tenantId])
-
-            if (existing.length > 0) {
-                await dbPromise.query(
-                    "UPDATE pending_registrations SET status = 'REJECTED', decided_at = NOW(), decided_by = ? WHERE id = ?",
-                    [req.user.email, id]
-                )
-                return res.status(409).json({ status: 'error', message: 'Esse e-mail já tem acesso a essa localização' })
+            if (!result.ok) {
+                return res.status(409).json({ status: 'error', message: result.message })
             }
 
-            // mantém a mesma senha do e-mail em outras localizações, se já existir uma
-            const [otherAccount] = await dbPromise.query('SELECT password_hash FROM users WHERE email = ? LIMIT 1', [pending.email])
-            const finalHash = otherAccount.length > 0 ? otherAccount[0].password_hash : pending.password_hash
-
-            const [result] = await dbPromise.query(
-                'INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, ?)',
-                [pending.name, pending.email, finalHash, req.tenantId, pending.requested_role]
-            )
-
-            await dbPromise.query(
-                "UPDATE pending_registrations SET status = 'APPROVED', decided_at = NOW(), decided_by = ? WHERE id = ?",
-                [req.user.email, id]
-            )
-
-            await registrarAuditoria(req, 'registration_approved', pending.email, `Aprovado como ${pending.requested_role.toLowerCase()}`)
-
-            transporter.sendMail({
-                from: process.env.MAIL_FROM,
-                to: pending.email,
-                subject: 'Seu cadastro foi aprovado | SNEF',
-                html: `
-                <div style="background:#f4f2f8;padding:40px;font-family:Arial;text-align:center">
-                    <div style="max-width:420px;background:#fff;border-radius:14px;padding:30px;margin:auto">
-                        <img src="cid:snef-logo" alt="Groupe SNEF" style="max-width:140px;margin-bottom:20px">
-                        <h2 style="color:#2b2142">Cadastro aprovado!</h2>
-                        <p>Olá ${pending.name}, seu acesso foi aprovado. Já pode entrar no sistema com o e-mail e senha que você cadastrou.</p>
-                        <a href="${process.env.FRONT_URL}/login.html" style="display:inline-block;margin-top:20px;padding:14px 24px;background:#008080;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
-                            Fazer login
-                        </a>
-                    </div>
-                </div>`,
-                attachments: [logoAttachment()]
-            }).catch(err => console.error('Erro ao notificar aprovação:', err.message))
-
-            res.json({ status: 'success', message: 'Cadastro aprovado', data: { id: result.insertId } })
+            res.json({ status: 'success', message: result.message, data: { id: result.userId } })
         } catch (err) {
             res.status(500).json({ status: 'error', message: 'Erro ao aprovar cadastro' })
         }
@@ -294,12 +255,7 @@ module.exports = (dbPromise) => {
                 return res.status(404).json({ status: 'error', message: 'Pedido não encontrado' })
             }
 
-            await dbPromise.query(
-                "UPDATE pending_registrations SET status = 'REJECTED', decided_at = NOW(), decided_by = ? WHERE id = ?",
-                [req.user.email, id]
-            )
-
-            await registrarAuditoria(req, 'registration_rejected', rows[0].email, null)
+            await rejectRegistration(dbPromise, rows[0], req.user.email)
 
             res.json({ status: 'success', message: 'Cadastro rejeitado' })
         } catch (err) {

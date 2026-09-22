@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { transporter, logoAttachment } = require('../utils/mailer')
+const { approveRegistration, rejectRegistration } = require('../services/registrationDecisions')
 
 module.exports = function (dbPromise) {
 
@@ -195,7 +196,7 @@ module.exports = function (dbPromise) {
         }
     })
 
-    async function notificarPendencia(tenantId, tenantName, { name, requestedRole }) {
+    async function notificarPendencia(tenantId, tenantName, { name, requestedRole, decisionToken, pendingId }) {
         try {
             const [recipients] = await dbPromise.query(
                 "SELECT email FROM users WHERE tenant_id = ? AND role IN ('ADMIN', 'DONO') AND active = TRUE",
@@ -204,6 +205,7 @@ module.exports = function (dbPromise) {
 
             const roleLabel = requestedRole === 'admin' ? 'Admin' : 'Operador (Usuário)'
             const quando = new Date().toLocaleString('pt-BR')
+            const linkBase = `${process.env.FRONT_URL}/api/auth/decide-registration?id=${pendingId}&token=${decisionToken}`
 
             for (const recipient of recipients) {
                 transporter.sendMail({
@@ -216,7 +218,15 @@ module.exports = function (dbPromise) {
                             <img src="cid:snef-logo" alt="Groupe SNEF" style="max-width:140px;margin-bottom:20px">
                             <h2 style="color:#2b2142">Novo pedido de cadastro</h2>
                             <p><strong>${name}</strong> pediu acesso como <strong>${roleLabel}</strong> em <strong>${tenantName}</strong>, às <strong>${quando}</strong>.</p>
-                            <p style="color:#888;font-size:13px">Entre em Permissões no sistema pra aprovar ou rejeitar esse pedido.</p>
+                            <div style="margin-top:20px">
+                                <a href="${linkBase}&action=approve" style="display:inline-block;margin:0 6px;padding:14px 22px;background:#368D6D;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
+                                    ✅ Aprovar
+                                </a>
+                                <a href="${linkBase}&action=reject" style="display:inline-block;margin:0 6px;padding:14px 22px;background:#D9534F;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
+                                    ❌ Rejeitar
+                                </a>
+                            </div>
+                            <p style="color:#888;font-size:12px;margin-top:20px">Esse link vale por 7 dias e some assim que alguém decidir — não precisa fazer nada se outro admin já resolver.</p>
                         </div>
                     </div>`,
                     attachments: [logoAttachment()]
@@ -269,17 +279,93 @@ module.exports = function (dbPromise) {
             }
 
             const passwordHash = await bcrypt.hash(password, 10)
+            const decisionToken = crypto.randomBytes(24).toString('hex')
+            const decisionTokenExpires = new Date(Date.now() + 7 * 24 * 3600000)
 
-            await dbPromise.query(
-                'INSERT INTO pending_registrations (tenant_id, name, email, password_hash, requested_role) VALUES (?, ?, ?, ?, ?)',
-                [tenantId, name, email, passwordHash, role]
+            const [result] = await dbPromise.query(
+                'INSERT INTO pending_registrations (tenant_id, name, email, password_hash, requested_role, decision_token, decision_token_expires) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [tenantId, name, email, passwordHash, role, decisionToken, decisionTokenExpires]
             )
 
-            notificarPendencia(tenantId, tenantRows[0].name, { name, requestedRole: role })
+            notificarPendencia(tenantId, tenantRows[0].name, { name, requestedRole: role, decisionToken, pendingId: result.insertId })
 
             res.json({ status: 'success', message: 'Cadastro enviado! Aguarde a aprovação do responsável pela localização.' })
         } catch {
             res.status(500).json({ message: 'Erro ao enviar cadastro' })
+        }
+    })
+
+    function paginaDecisao(titulo, mensagem, ok) {
+        return `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>SNEF</title>
+            <style>
+                body { font-family: Arial, sans-serif; background: #F4F7F9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+                .card { background: #fff; padding: 40px 30px; border-radius: 12px; max-width: 400px; text-align: center; box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+                h2 { color: ${ok ? '#2b2142' : '#b3261e'}; margin-top: 0; }
+                p { color: #555; line-height: 1.5; }
+                a { color: #368D6D; font-weight: 600; text-decoration: none; }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>${titulo}</h2>
+                <p>${mensagem}</p>
+                <p><a href="${process.env.FRONT_URL}/login.html">Ir para o login</a></p>
+            </div>
+        </body>
+        </html>`
+    }
+
+    // aprovar/rejeitar direto do link do e-mail, sem precisar logar.
+    // o token é a própria autorização — some assim que alguém decide, então
+    // se o mesmo e-mail chegar pra vários admins, só o primeiro clique vale.
+    router.get('/decide-registration', async (req, res) => {
+        const { id, token, action } = req.query
+
+        if (!id || !token || !['approve', 'reject'].includes(action)) {
+            return res.status(400).send(paginaDecisao('Link inválido', 'Esse link está incompleto ou incorreto.', false))
+        }
+
+        try {
+            const [rows] = await dbPromise.query(
+                'SELECT * FROM pending_registrations WHERE id = ? AND decision_token = ?',
+                [id, token]
+            )
+
+            if (rows.length === 0) {
+                return res.status(404).send(paginaDecisao('Link inválido', 'Esse link de aprovação não existe.', false))
+            }
+
+            const pending = rows[0]
+
+            if (pending.status !== 'PENDING') {
+                const jaFoi = pending.status === 'APPROVED' ? 'aprovado' : 'rejeitado'
+                return res.send(paginaDecisao('Pedido já decidido', `O cadastro de ${pending.name} já tinha sido ${jaFoi} antes — provavelmente por outro admin.`, true))
+            }
+
+            if (new Date(pending.decision_token_expires) < new Date()) {
+                return res.send(paginaDecisao('Link expirado', 'Esse link de aprovação expirou. Entre no sistema pra decidir manualmente, ou peça pra pessoa se cadastrar de novo.', false))
+            }
+
+            if (action === 'reject') {
+                await rejectRegistration(dbPromise, pending, 'e-mail')
+                return res.send(paginaDecisao('Cadastro rejeitado', `O pedido de ${pending.name} foi rejeitado.`, true))
+            }
+
+            const result = await approveRegistration(dbPromise, pending, 'e-mail')
+
+            if (!result.ok) {
+                return res.send(paginaDecisao('Não foi possível aprovar', result.message, false))
+            }
+
+            return res.send(paginaDecisao('Cadastro aprovado! 🎉', `${pending.name} agora tem acesso à localização.`, true))
+        } catch (err) {
+            res.status(500).send(paginaDecisao('Erro', 'Não foi possível processar esse pedido agora. Tente novamente mais tarde.', false))
         }
     })
 

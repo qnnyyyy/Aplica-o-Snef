@@ -314,6 +314,11 @@ CREATE TABLE pending_registrations (
     decided_at DATETIME NULL,
     decided_by VARCHAR(150) NULL,
 
+    -- token usado nos links de Aprovar/Rejeitar do e-mail de notificação;
+    -- some (status muda pra PENDING só uma vez) assim que alguém decide
+    decision_token VARCHAR(64) NULL,
+    decision_token_expires DATETIME NULL,
+
     CONSTRAINT fk_pending_tenant
         FOREIGN KEY (tenant_id)
         REFERENCES tenants(id)
@@ -321,6 +326,7 @@ CREATE TABLE pending_registrations (
 
 CREATE INDEX idx_pending_tenant ON pending_registrations(tenant_id);
 CREATE INDEX idx_pending_email ON pending_registrations(email);
+CREATE INDEX idx_pending_token ON pending_registrations(decision_token);
 
 -- =========================================================
 -- TABELA: audit_log
