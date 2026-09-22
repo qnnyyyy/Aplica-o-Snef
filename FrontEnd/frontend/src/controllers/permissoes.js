@@ -36,7 +36,10 @@ const els = {
     btnRegenKey: document.getElementById('btn-regen-key'),
     apiKeyFeedback: document.getElementById('api-key-feedback'),
 
-    auditTbody: document.getElementById('audit-tbody')
+    auditTbody: document.getElementById('audit-tbody'),
+
+    pendingTbody: document.getElementById('pending-tbody'),
+    pendingCount: document.getElementById('pending-count')
 }
 
 async function carregarEquipe() {
@@ -270,6 +273,68 @@ els.btnRegenKey.addEventListener('click', async () => {
     }
 })
 
+async function carregarPendentes() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/pending-registrations`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const result = await res.json()
+
+        if (result.status !== 'success') return
+
+        if (result.data.length === 0) {
+            els.pendingCount.style.display = 'none'
+            els.pendingTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Nenhum cadastro pendente.</td></tr>'
+            return
+        }
+
+        els.pendingCount.style.display = 'inline-block'
+        els.pendingCount.textContent = result.data.length
+
+        els.pendingTbody.innerHTML = result.data.map(p => `
+            <tr>
+                <td>${p.name}</td>
+                <td>${p.email}</td>
+                <td><span class="badge ${p.requested_role === 'ADMIN' ? 'badge-admin' : 'badge-viewer'}">${p.requested_role === 'ADMIN' ? 'Admin' : 'Operador'}</span></td>
+                <td>${new Date(p.created_at).toLocaleString('pt-BR')}</td>
+                <td>
+                    <button class="btn-edit-role" data-id="${p.id}" data-action="approve">Aprovar</button>
+                    <button class="btn-remove" data-id="${p.id}" data-action="reject">Rejeitar</button>
+                </td>
+            </tr>
+        `).join('')
+
+        els.pendingTbody.querySelectorAll('button[data-action]').forEach(btn => {
+            btn.addEventListener('click', () => decidirPendente(btn.dataset.id, btn.dataset.action))
+        })
+    } catch (err) {
+        els.pendingTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">Erro ao carregar cadastros pendentes.</td></tr>'
+    }
+}
+
+async function decidirPendente(id, action) {
+    if (action === 'reject' && !confirm('Rejeitar esse pedido de cadastro?')) return
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/pending-registrations/${id}/${action}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const result = await res.json()
+
+        if (!res.ok) {
+            alert(result.message || 'Erro ao processar pedido')
+            return
+        }
+
+        carregarPendentes()
+        carregarEquipe()
+        carregarAuditoria()
+    } catch (err) {
+        alert('Erro ao comunicar com o servidor')
+    }
+}
+
 async function carregarAuditoria() {
     try {
         const res = await fetch(`${API_BASE_URL}/audit-log`, {
@@ -284,7 +349,13 @@ async function carregarAuditoria() {
             return
         }
 
-        const acoes = { invite: 'Convite enviado', role_change: 'Permissão alterada', remove: 'Acesso removido' }
+        const acoes = {
+            invite: 'Convite enviado',
+            role_change: 'Permissão alterada',
+            remove: 'Acesso removido',
+            registration_approved: 'Cadastro aprovado',
+            registration_rejected: 'Cadastro rejeitado'
+        }
 
         els.auditTbody.innerHTML = result.data.map(a => `
             <tr>
@@ -304,4 +375,5 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarEquipe()
     carregarChaveApi()
     carregarAuditoria()
+    carregarPendentes()
 })

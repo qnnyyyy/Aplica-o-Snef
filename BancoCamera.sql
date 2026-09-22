@@ -295,6 +295,34 @@ CREATE TABLE users (
 CREATE INDEX idx_users_tenant ON users(tenant_id);
 
 -- =========================================================
+-- TABELA: pending_registrations
+-- Pedidos de cadastro (Admin/Operador) aguardando aprovação de
+-- um admin ou dono da localidade escolhida. Dono não passa por aqui,
+-- pois ele cria a própria localidade na hora.
+-- =========================================================
+CREATE TABLE pending_registrations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    requested_role ENUM('ADMIN','VIEWER') NOT NULL,
+    status ENUM('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    decided_at DATETIME NULL,
+    decided_by VARCHAR(150) NULL,
+
+    CONSTRAINT fk_pending_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
+);
+
+CREATE INDEX idx_pending_tenant ON pending_registrations(tenant_id);
+CREATE INDEX idx_pending_email ON pending_registrations(email);
+
+-- =========================================================
 -- TABELA: audit_log
 -- Registro de ações administrativas (convites, mudança de permissão, remoção)
 -- =========================================================

@@ -194,6 +194,73 @@
                 margin-bottom: 10px;
             }
         }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--cor-borda);
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 10px 6px 12px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #888;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--cor-primaria);
+            border-bottom-color: var(--cor-primaria);
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .autocomplete-wrap { position: relative; }
+
+        .suggestions-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid var(--cor-borda);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 190px;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+        }
+
+        .suggestions-list.open { display: block; }
+
+        .suggestion-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 0.95em;
+            text-align: left;
+        }
+
+        .suggestion-item:hover, .suggestion-item.active-item {
+            background: var(--cor-fundo);
+            color: var(--cor-primaria);
+        }
+
+        .suggestion-empty {
+            padding: 10px 12px;
+            color: #999;
+            font-size: 0.85em;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -205,15 +272,15 @@
 
         <h2>Criar Conta</h2>
 
-        <form id="register-form">
+        <div class="tabs">
+            <button type="button" class="tab-btn active" id="tab-btn-new" data-tab="new">Novo cadastro</button>
+            <button type="button" class="tab-btn" id="tab-btn-owner" data-tab="owner">Já sou Dono, tenho conta</button>
+        </div>
+
+        <form id="register-form" class="tab-panel active" data-panel="new">
             <div class="form-group">
                 <label for="name">Nome completo</label>
                 <input type="text" id="name" placeholder="Seu nome" required>
-            </div>
-
-            <div class="form-group">
-                <label for="location-name">Nome da Localidade/Estação</label>
-                <input type="text" id="location-name" placeholder="Ex: Linha 11 Prata" required>
             </div>
 
             <div class="form-group">
@@ -233,24 +300,74 @@
 
             <div class="form-group" style="border-top:1px solid var(--cor-borda); padding-top:15px; margin-top:5px;">
                 <label>Tipo de conta</label>
-                <div style="display:flex; gap:15px; font-size:0.9em; margin-top:4px;">
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.9em; margin-top:4px;">
                     <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
-                        <input type="radio" name="account-type" value="admin" id="account-type-admin" checked style="width:auto;">
-                        Localização normal
+                        <input type="radio" name="account-type" value="viewer" id="account-type-viewer" checked style="width:auto;">
+                        Operador (usuário comum de uma localidade existente)
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
+                        <input type="radio" name="account-type" value="admin" id="account-type-admin" style="width:auto;">
+                        Admin de uma localidade existente
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
                         <input type="radio" name="account-type" value="owner" id="account-type-owner" style="width:auto;">
-                        Sou o Dono desta localização
+                        Sou o Dono e vou criar minha primeira localidade
                     </label>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="confirmation-key">Chave de Confirmação</label>
-                <input type="password" id="confirmation-key" placeholder="Chave fornecida pela SNEF" required>
+            <div class="form-group" id="group-location-select">
+                <label for="location-search">Estação / Localidade</label>
+                <div class="autocomplete-wrap">
+                    <input type="text" id="location-search" placeholder="Digite o nome da estação..." autocomplete="off">
+                    <input type="hidden" id="location-search-id">
+                    <div id="location-suggestions" class="suggestions-list"></div>
+                </div>
             </div>
 
+            <div class="form-group" id="group-location-name" style="display:none;">
+                <label for="location-name">Nome da Localidade/Estação</label>
+                <input type="text" id="location-name" placeholder="Ex: Linha 11 Prata">
+            </div>
+
+            <div class="form-group" id="group-confirmation-key" style="display:none;">
+                <label for="confirmation-key">Chave de Confirmação</label>
+                <input type="password" id="confirmation-key" placeholder="Chave fornecida pela SNEF">
+            </div>
+
+            <p id="approval-hint" style="font-size:0.8em; color:#888; margin:0 0 10px;">
+                Seu cadastro será enviado para aprovação do responsável pela localidade escolhida.
+            </p>
+
             <button type="submit" class="btn-register">Cadastrar</button>
+        </form>
+
+        <form id="owner-location-form" class="tab-panel" data-panel="owner" style="display:none">
+            <p style="font-size:0.85em; color:#666; margin-top:0;">
+                Use os dados da sua conta já existente pra criar mais uma localidade. Você será o Dono dela.
+            </p>
+
+            <div class="form-group">
+                <label for="owner-email">E-mail</label>
+                <input type="email" id="owner-email" placeholder="email@exemplo.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="owner-password">Senha</label>
+                <input type="password" id="owner-password" placeholder="Sua senha de login" required>
+            </div>
+
+            <div class="form-group">
+                <label for="owner-key">Chave de Dono</label>
+                <input type="password" id="owner-key" placeholder="Chave de Dono fornecida pela SNEF" required>
+            </div>
+
+            <div class="form-group" style="border-top:1px solid var(--cor-borda); padding-top:15px; margin-top:5px;">
+                <label for="owner-location-name">Nome da nova localidade</label>
+                <input type="text" id="owner-location-name" placeholder="Ex: Linha 4 Amarela" required>
+            </div>
+
+            <button type="submit" class="btn-register">Criar localidade</button>
         </form>
 
         <div class="login-link">
@@ -263,8 +380,8 @@
     <div id="success-modal">
         <div class="modal-overlay"></div>
         <div class="modal-content">
-            <h3>Sucesso! 🎉</h3>
-            <p>Sua conta foi criada. Clique abaixo para acessar o sistema.</p>
+            <h3 id="success-title">Sucesso! 🎉</h3>
+            <p id="success-text">Sua conta foi criada. Clique abaixo para acessar o sistema.</p>
             <button id="btn-ok">Ir para o Login</button>
         </div>
     </div>

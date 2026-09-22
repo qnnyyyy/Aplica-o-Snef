@@ -65,39 +65,40 @@ module.exports = function (dbPromise) {
         }
     })
 
+    // cadastro direto: só o Dono cria conta na hora, pois é ele quem cria a própria localidade.
+    // Admin e Operador passam por /request-registration e precisam de aprovação.
+    // Só serve pra quem AINDA não tem conta — quem já tem usa /register-owner-location,
+    // que verifica a senha de verdade em vez de simplesmente reaproveitar o hash existente.
     router.post('/register', async (req, res) => {
-        const { name, email, password, locationName, confirmationKey, accountType } = req.body
+        const { name, email, password, locationName, confirmationKey } = req.body
 
         if (!name || !email || !password || !locationName) {
             return res.status(400).json({ message: 'Dados inválidos' })
         }
 
-        const isOwnerAccount = accountType === 'owner'
-        const expectedKey = isOwnerAccount ? process.env.OWNER_REGISTRATION_KEY : process.env.REGISTRATION_KEY
-
-        if (confirmationKey !== expectedKey) {
+        if (confirmationKey !== process.env.OWNER_REGISTRATION_KEY) {
             return res.status(403).json({ message: 'Chave de confirmação inválida' })
         }
 
-        const role = isOwnerAccount ? 'dono' : 'admin'
-
         try {
-            // cada cadastro cria seu próprio tenant; quem cria vira admin (ou dono) dele
+            const [existingAccount] = await dbPromise.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email])
+
+            if (existingAccount.length > 0) {
+                return res.status(409).json({
+                    message: 'Esse e-mail já tem conta no sistema. Use a aba "Já tenho conta" para criar uma nova localização.'
+                })
+            }
+
+            const role = 'dono'
+            const passwordHash = await bcrypt.hash(password, 10)
+
+            // cada cadastro cria seu próprio tenant; quem cria vira dono dele
             const apiKey = crypto.randomBytes(20).toString('hex')
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name, api_key) VALUES (?, ?)',
                 [locationName, apiKey]
             )
             const tenantId = tenantResult.insertId
-
-            // se o e-mail já existe em outro tenant, mantém a senha atual dele
-            const [existingAccount] = await dbPromise.query(
-                'SELECT password_hash FROM users WHERE email = ? LIMIT 1',
-                [email]
-            )
-            const passwordHash = existingAccount.length > 0
-                ? existingAccount[0].password_hash
-                : await bcrypt.hash(password, 10)
 
             const [result] = await dbPromise.query(
                 'INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, ?)',
@@ -126,47 +127,159 @@ module.exports = function (dbPromise) {
         }
     })
 
-    router.post('/create-location', simpleAuthMiddleware, async (req, res) => {
-        const { locationName } = req.body
+    // pra quem já é dono (ou já tem qualquer conta) e quer criar mais uma localidade.
+    // Verifica a senha de verdade pra evitar que alguém crie uma localidade "como" outra pessoa
+    // só sabendo o e-mail dela e a chave de dono.
+    router.post('/register-owner-location', async (req, res) => {
+        const { email, password, locationName, confirmationKey } = req.body
 
-        if ((req.user.role || '').toLowerCase() !== 'dono') {
-            return res.status(403).json({ status: 'error', message: 'Apenas o Dono pode criar novas localizações' })
+        if (!email || !password || !locationName) {
+            return res.status(400).json({ message: 'Dados inválidos' })
         }
 
-        if (!locationName || !locationName.trim()) {
-            return res.status(400).json({ status: 'error', message: 'Nome da localização é obrigatório' })
+        if (confirmationKey !== process.env.OWNER_REGISTRATION_KEY) {
+            return res.status(403).json({ message: 'Chave de confirmação inválida' })
         }
 
         try {
-            const [currentRows] = await dbPromise.query('SELECT name, password_hash FROM users WHERE id = ?', [req.user.id])
+            const [accounts] = await dbPromise.query('SELECT * FROM users WHERE email = ?', [email])
 
-            if (currentRows.length === 0) {
-                return res.status(404).json({ status: 'error', message: 'Usuário não encontrado' })
+            if (accounts.length === 0) {
+                return res.status(404).json({ message: 'Nenhuma conta encontrada com esse e-mail. Use a aba "Novo cadastro".' })
+            }
+
+            let verified = null
+            for (const account of accounts) {
+                if (await bcrypt.compare(password, account.password_hash)) {
+                    verified = account
+                    break
+                }
+            }
+
+            if (!verified) {
+                return res.status(401).json({ message: 'Senha incorreta' })
             }
 
             const apiKey = crypto.randomBytes(20).toString('hex')
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name, api_key) VALUES (?, ?)',
-                [locationName.trim(), apiKey]
+                [locationName, apiKey]
             )
             const tenantId = tenantResult.insertId
 
             const [result] = await dbPromise.query(
                 "INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, 'dono')",
-                [currentRows[0].name, req.user.email, currentRows[0].password_hash, tenantId]
+                [verified.name, email, verified.password_hash, tenantId]
             )
 
             await dbPromise.query('UPDATE tenants SET owner_user_id = ? WHERE id = ?', [result.insertId, tenantId])
 
             issueLoginResponse(res, {
                 id: result.insertId,
-                name: currentRows[0].name,
-                email: req.user.email,
+                name: verified.name,
+                email,
                 tenant_id: tenantId,
                 role: 'dono'
             }, req, { skipAlert: true })
+        } catch {
+            res.status(500).json({ message: 'Erro ao criar localização' })
+        }
+    })
+
+    router.get('/locations', async (req, res) => {
+        try {
+            const [rows] = await dbPromise.query('SELECT id, name FROM tenants ORDER BY name')
+            res.json({ status: 'success', data: rows })
+        } catch {
+            res.status(500).json({ status: 'error', message: 'Erro ao buscar localizações' })
+        }
+    })
+
+    async function notificarPendencia(tenantId, tenantName, { name, requestedRole }) {
+        try {
+            const [recipients] = await dbPromise.query(
+                "SELECT email FROM users WHERE tenant_id = ? AND role IN ('ADMIN', 'DONO') AND active = TRUE",
+                [tenantId]
+            )
+
+            const roleLabel = requestedRole === 'admin' ? 'Admin' : 'Operador (Usuário)'
+            const quando = new Date().toLocaleString('pt-BR')
+
+            for (const recipient of recipients) {
+                transporter.sendMail({
+                    from: process.env.MAIL_FROM,
+                    to: recipient.email,
+                    subject: 'Novo pedido de cadastro | SNEF',
+                    html: `
+                    <div style="background:#f4f2f8;padding:40px;font-family:Arial;text-align:center">
+                        <div style="max-width:420px;background:#fff;border-radius:14px;padding:30px;margin:auto">
+                            <img src="cid:snef-logo" alt="Groupe SNEF" style="max-width:140px;margin-bottom:20px">
+                            <h2 style="color:#2b2142">Novo pedido de cadastro</h2>
+                            <p><strong>${name}</strong> pediu acesso como <strong>${roleLabel}</strong> em <strong>${tenantName}</strong>, às <strong>${quando}</strong>.</p>
+                            <p style="color:#888;font-size:13px">Entre em Permissões no sistema pra aprovar ou rejeitar esse pedido.</p>
+                        </div>
+                    </div>`,
+                    attachments: [logoAttachment()]
+                }).catch(err => console.error('Erro ao notificar pendência:', err.message))
+            }
         } catch (err) {
-            res.status(500).json({ status: 'error', message: 'Erro ao criar localização' })
+            console.error('Erro ao buscar destinatários da pendência:', err.message)
+        }
+    }
+
+    router.post('/request-registration', async (req, res) => {
+        const { name, email, password, role, tenantId, confirmationKey } = req.body
+
+        if (!name || !email || !password || !role || !tenantId) {
+            return res.status(400).json({ message: 'Dados inválidos' })
+        }
+
+        if (role !== 'admin' && role !== 'viewer') {
+            return res.status(400).json({ message: 'Permissão inválida' })
+        }
+
+        if (role === 'admin' && confirmationKey !== process.env.REGISTRATION_KEY) {
+            return res.status(403).json({ message: 'Chave de confirmação inválida' })
+        }
+
+        try {
+            const [tenantRows] = await dbPromise.query('SELECT id, name FROM tenants WHERE id = ?', [tenantId])
+
+            if (tenantRows.length === 0) {
+                return res.status(404).json({ message: 'Localização não encontrada' })
+            }
+
+            // limite de 1 pedido por e-mail a cada 24h, pra não floodar o e-mail dos admins
+            const [recent] = await dbPromise.query(
+                'SELECT id FROM pending_registrations WHERE email = ? AND created_at >= NOW() - INTERVAL 1 DAY',
+                [email]
+            )
+
+            if (recent.length > 0) {
+                return res.status(429).json({ message: 'Você já enviou um cadastro hoje. Tente novamente amanhã.' })
+            }
+
+            const [existing] = await dbPromise.query(
+                'SELECT id FROM users WHERE email = ? AND tenant_id = ?',
+                [email, tenantId]
+            )
+
+            if (existing.length > 0) {
+                return res.status(409).json({ message: 'Esse e-mail já tem acesso a essa localização' })
+            }
+
+            const passwordHash = await bcrypt.hash(password, 10)
+
+            await dbPromise.query(
+                'INSERT INTO pending_registrations (tenant_id, name, email, password_hash, requested_role) VALUES (?, ?, ?, ?, ?)',
+                [tenantId, name, email, passwordHash, role]
+            )
+
+            notificarPendencia(tenantId, tenantRows[0].name, { name, requestedRole: role })
+
+            res.json({ status: 'success', message: 'Cadastro enviado! Aguarde a aprovação do responsável pela localização.' })
+        } catch {
+            res.status(500).json({ message: 'Erro ao enviar cadastro' })
         }
     })
 

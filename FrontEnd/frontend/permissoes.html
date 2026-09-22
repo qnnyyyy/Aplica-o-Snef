@@ -236,7 +236,23 @@
         <div id="invite-feedback"></div>
     </form>
 
-    <h2>Membros com acesso</h2>
+    <h2>Cadastros pendentes <span id="pending-count" class="badge badge-viewer" style="display:none"></span></h2>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Permissão pedida</th>
+                    <th>Quando</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="pending-tbody"><tr><td colspan="5" style="text-align:center;color:#999">Carregando...</td></tr></tbody>
+        </table>
+    </div>
+
+    <h2 style="margin-top:25px;">Membros com acesso</h2>
     <div class="table-responsive">
         <table>
             <thead>
