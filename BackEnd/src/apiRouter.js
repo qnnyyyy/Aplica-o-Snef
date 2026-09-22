@@ -70,29 +70,42 @@ module.exports = (dbPromise) => {
                 ORDER BY rp.received_at DESC LIMIT 100`, [req.tenantId, req.tenantId, ...(filter ? [camera_id] : [])]);
 
             const [status] = await dbPromise.query(`
-                SELECT 
-                    c.id, 
-                    c.name, 
+                SELECT
+                    c.id,
+                    c.name,
                     MAX(rp.received_at) as last_seen,
-                    CASE 
-                        WHEN MAX(rp.received_at) >= NOW() - INTERVAL 15 MINUTE THEN 'online' 
-                        ELSE 'offline' 
+                    CASE
+                        WHEN MAX(rp.received_at) >= NOW() - INTERVAL 15 MINUTE THEN 'online'
+                        ELSE 'offline'
                     END as status
-                FROM cameras c 
+                FROM cameras c
                 LEFT JOIN raw_payloads rp ON c.id = rp.camera_id AND rp.tenant_id = c.tenant_id
-                WHERE c.enabled = TRUE 
+                WHERE c.enabled = TRUE
                 AND c.tenant_id = ?
                 GROUP BY c.id, c.name`, [req.tenantId]);
 
-            res.json({ 
-                status: 'success', 
-                data: { 
-                    totalIn: totais[0].totalIn || 0, 
-                    totalOut: totais[0].totalOut || 0, 
-                    latestEvents: eventos, 
+            const [hourly] = await dbPromise.query(`
+                SELECT
+                    HOUR(rp.received_at) AS hora,
+                    IFNULL(SUM(CAST(rp.raw_json->>'$.Data[0].CountingInfo[0].In' AS UNSIGNED)), 0) AS totalIn,
+                    IFNULL(SUM(CAST(rp.raw_json->>'$.Data[0].CountingInfo[0].Out' AS UNSIGNED)), 0) AS totalOut
+                FROM raw_payloads rp
+                WHERE DATE(rp.received_at) = CURDATE()
+                AND rp.tenant_id = ?
+                ${filter}
+                GROUP BY HOUR(rp.received_at)
+                ORDER BY hora`, params);
+
+            res.json({
+                status: 'success',
+                data: {
+                    totalIn: totais[0].totalIn || 0,
+                    totalOut: totais[0].totalOut || 0,
+                    latestEvents: eventos,
                     cameraStatus: status,
-                    availableCameras: cameras 
-                } 
+                    availableCameras: cameras,
+                    hourlySeries: hourly
+                }
             });
         } catch (err) { 
             console.error('Erro no Dashboard:', err);

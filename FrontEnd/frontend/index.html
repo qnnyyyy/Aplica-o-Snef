@@ -195,7 +195,7 @@
 
         #dashboard-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 20px;
             max-width: 1200px;
             margin: 0 auto;
@@ -226,11 +226,40 @@
             align-items: center;
         }
 
+        .card-wide { grid-column: span 2; }
+
+        @media (max-width: 700px) {
+            .card-wide { grid-column: span 1; }
+        }
+
         .metric-value { font-size: 3.5em; font-weight: 700; transition: transform 0.3s; }
         .card:hover .metric-value { transform: scale(1.03); }
 
         #total-in { color: #28a745; }
         #total-out { color: #dc3545; }
+        #total-agora { color: var(--cor-azul-snef); }
+
+        #camera-status-summary {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #666;
+        }
+
+        #camera-status-list.compact { max-height: 170px; }
+        #camera-status-list.compact li { padding: 7px 0; }
+
+        .card-footer-link {
+            display: block;
+            text-align: right;
+            font-size: 0.8em;
+            color: var(--cor-azul-snef);
+            text-decoration: none;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .card-footer-link:hover { text-decoration: underline; }
+
+        #hourly-chart-wrap { position: relative; height: 220px; margin-top: 10px; }
 
         ul { list-style: none; padding: 0; margin: 15px 0 0 0; max-height: 350px; overflow-y: auto; }
         li { padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.9em; transition: background 0.2s; }
@@ -304,6 +333,12 @@
 
 <div id="dashboard-container">
     <div class="card">
+        <h2>Pessoas no Local Agora</h2>
+        <div class="metric-value" id="total-agora">0</div>
+        <p>Saldo de entradas menos saídas hoje.</p>
+    </div>
+
+    <div class="card">
         <h2>Total de Entrada (IN)</h2>
         <div class="metric-value" id="total-in">0</div>
         <p>Pessoas que entraram hoje.</p>
@@ -316,23 +351,32 @@
     </div>
 
     <div class="card">
-        <h2>Status das Câmeras</h2>
-        <ul id="camera-status-list"><li>Carregando...</li></ul>
+        <h2>Status das Câmeras <span id="camera-status-summary"></span></h2>
+        <ul id="camera-status-list" class="compact"><li>Carregando...</li></ul>
+        <a href="liveview.html" class="card-footer-link">Ver Live View →</a>
     </div>
 
-    <div class="card">
+    <div class="card card-wide">
+        <h2>Entradas x Saídas por Hora</h2>
+        <div id="hourly-chart-wrap">
+            <canvas id="hourly-chart"></canvas>
+        </div>
+    </div>
+
+    <div class="card card-wide">
         <h2 id="latest-events-header">Últimos Eventos</h2>
         <ul id="latest-events"><li>Aguardando dados...</li></ul>
     </div>
 </div>
 
+<script src="https://unpkg.com/chart.js@4/dist/chart.umd.min.js"></script>
 <script type="module">
     const token = localStorage.getItem('token');
-    const API_BASE_URL = 'http://localhost:3000/api';
-
+    const API_BASE_URL = '/api';
 
     let currentEvents = [];
-    let eventFilter = 'ALL'; 
+    let eventFilter = 'ALL';
+    let hourlyChart = null;
 
     async function updateDashboard() {
         try {
@@ -345,8 +389,8 @@
             const result = await res.json();
 
             if (result.status === 'success') {
-                const { totalIn, totalOut, latestEvents, cameraStatus, availableCameras } = result.data;
-                
+                const { totalIn, totalOut, latestEvents, cameraStatus, availableCameras, hourlySeries } = result.data;
+
                 currentEvents = latestEvents.map(e => ({
                     event_time: e.event_time || e.received_at,
                     camera: e.camera || e.camera_name,
@@ -365,6 +409,7 @@
 
                 document.getElementById('total-in').innerText = totalIn;
                 document.getElementById('total-out').innerText = totalOut;
+                document.getElementById('total-agora').innerText = Math.max(0, totalIn - totalOut);
 
                 renderEvents();
 
@@ -380,10 +425,50 @@
                         </li>`;
                     }).join('');
                 }
+
+                const onlineCount = cameraStatus.filter(c => c.status === 'online').length;
+                const summaryEl = document.getElementById('camera-status-summary');
+                if (summaryEl) summaryEl.textContent = `${onlineCount}/${cameraStatus.length} online`;
+
+                renderHourlyChart(hourlySeries || []);
             }
         } catch (err) {
             console.error('Erro ao atualizar dashboard:', err);
         }
+    }
+
+    function renderHourlyChart(hourlySeries) {
+        const canvas = document.getElementById('hourly-chart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        const porHora = new Map(hourlySeries.map(h => [Number(h.hora), h]));
+        const labels = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`);
+        const entradas = Array.from({ length: 24 }, (_, h) => Number(porHora.get(h)?.totalIn || 0));
+        const saidas = Array.from({ length: 24 }, (_, h) => Number(porHora.get(h)?.totalOut || 0));
+
+        if (hourlyChart) {
+            hourlyChart.data.datasets[0].data = entradas;
+            hourlyChart.data.datasets[1].data = saidas;
+            hourlyChart.update();
+            return;
+        }
+
+        hourlyChart = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Entradas', data: entradas, backgroundColor: '#28a745' },
+                    { label: 'Saídas', data: saidas, backgroundColor: '#dc3545' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
     }
 
     function renderEvents() {
