@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const simpleAuthMiddleware = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -192,29 +193,45 @@ module.exports = (dbPromise) => {
 
     router.get('/tenant-info', simpleAuthMiddleware, async (req, res) => {
         try {
+            const isAdmin = (req.user.role || '').toLowerCase() === 'admin';
+
             const [tenant] = await dbPromise.query(
-                'SELECT id, name FROM tenants WHERE id = ?',
+                `SELECT id, name${isAdmin ? ', api_key' : ''} FROM tenants WHERE id = ?`,
                 [req.tenantId]
             );
-            
+
             const [stats] = await dbPromise.query(`
-                SELECT 
+                SELECT
                     (SELECT COUNT(*) FROM cameras WHERE tenant_id = ?) as total_cameras,
                     (SELECT COUNT(*) FROM users WHERE tenant_id = ? AND active = TRUE) as total_users,
                     (SELECT COUNT(*) FROM stations WHERE tenant_id = ?) as total_stations,
                     (SELECT COUNT(*) FROM zones WHERE tenant_id = ?) as total_zones
             `, [req.tenantId, req.tenantId, req.tenantId, req.tenantId]);
-            
-            res.json({ 
-                status: 'success', 
-                data: { 
-                    tenant: tenant[0] || { id: req.tenantId, name: 'Cliente Padrão' }, 
-                    stats: stats[0] 
-                } 
+
+            res.json({
+                status: 'success',
+                data: {
+                    tenant: tenant[0] || { id: req.tenantId, name: 'Cliente Padrão' },
+                    stats: stats[0]
+                }
             });
         } catch (err) {
             console.error('Erro em /tenant-info:', err);
             res.status(500).json({ status: 'error', message: err.message });
+        }
+    });
+
+    router.post('/tenant-info/regenerate-key', simpleAuthMiddleware, async (req, res) => {
+        if ((req.user.role || '').toLowerCase() !== 'admin') {
+            return res.status(403).json({ status: 'error', message: 'Apenas admins podem gerar uma nova chave' });
+        }
+
+        try {
+            const newKey = crypto.randomBytes(20).toString('hex');
+            await dbPromise.query('UPDATE tenants SET api_key = ? WHERE id = ?', [newKey, req.tenantId]);
+            res.json({ status: 'success', data: { api_key: newKey } });
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao gerar nova chave' });
         }
     });
 

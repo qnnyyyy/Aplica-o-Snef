@@ -49,8 +49,12 @@ app.use('/api/stations', stationRouter(dbPromise))
 const teamRouter = require('./routers/teamRouter')
 app.use('/api/team', teamRouter(dbPromise))
 
-app.post('/vivotek/push', async (req, res) => {
+const cameraApiKeyMiddleware = require('./cameraApiKeyMiddleware')
+const verifyCameraApiKey = cameraApiKeyMiddleware(dbPromise)
+
+app.post('/vivotek/push', verifyCameraApiKey, async (req, res) => {
     const payload = req.body
+    let tenantId = req.tenantId
 
     const cameraSerial =
         payload.Device_ID ||
@@ -59,23 +63,21 @@ app.post('/vivotek/push', async (req, res) => {
 
     try {
         const [rows] = await dbPromise.query(
-            'SELECT id, zone_id, tenant_id FROM cameras WHERE camera_id = ?',
-            [cameraSerial]
+            'SELECT id, zone_id FROM cameras WHERE camera_id = ? AND tenant_id = ?',
+            [cameraSerial, tenantId]
         )
 
         let internalId
         let zoneId = null
-        let tenantId = 1
 
         if (rows.length > 0) {
             internalId = rows[0].id
             zoneId = rows[0].zone_id
-            tenantId = rows[0].tenant_id || 1
         } else {
             try {
                 const [result] = await dbPromise.query(
                     'INSERT INTO cameras (camera_id, name, enabled, tenant_id) VALUES (?, ?, ?, ?)',
-                    [cameraSerial, `Câmera ${cameraSerial}`, true, 1]
+                    [cameraSerial, `Câmera ${cameraSerial}`, true, tenantId]
                 )
                 internalId = result.insertId
             } catch (err) {
@@ -97,6 +99,9 @@ app.post('/vivotek/push', async (req, res) => {
             'INSERT INTO raw_payloads (camera_id, tenant_id, raw_json) VALUES (?, ?, ?)',
             [internalId, tenantId, JSON.stringify(payload)]
         )
+
+        // câmera voltou a enviar dados: limpa o alerta de offline pra ela poder alertar de novo se cair no futuro
+        await dbPromise.query('UPDATE cameras SET last_alert_sent_at = NULL WHERE id = ?', [internalId])
 
         const analyticData = payload.Analytic_Data
 
@@ -137,6 +142,9 @@ app.listen(PORT, '0.0.0.0', async () => {
         await dbPromise.query('SELECT 1')
         console.log(`Servidor rodando em http://localhost:${PORT}`)
         console.log(`Banco de dados conectado com sucesso`)
+
+        require('./services/cameraMonitor').start(dbPromise)
+        require('./services/reportScheduler').start(dbPromise)
     } catch (e) {
         console.error('Erro crítico ao iniciar:', e.message)
         process.exit(1)

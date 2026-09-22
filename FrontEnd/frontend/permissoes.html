@@ -252,6 +252,38 @@
     </div>
 </div>
 
+<div class="container" style="margin-top:20px">
+    <h2>Integração de câmeras</h2>
+    <p style="font-size:0.9em;color:#666;margin-top:-10px">
+        Chave usada para autenticar o envio de eventos das câmeras (VIVOTEK) para esta localidade.
+        Configure a câmera para enviar o cabeçalho <code>x-api-key</code> (ou <code>?key=</code>) com este valor.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="api-key-value" readonly style="flex:1;min-width:260px;padding:10px;border:1px solid var(--cor-borda);border-radius:4px;font-family:monospace;background:#f8f9fa">
+        <button id="btn-copy-key" class="animated-button" type="button">Copiar</button>
+        <button id="btn-regen-key" class="btn-remove" type="button" style="border-radius:4px;padding:10px 16px;font-weight:bold">Gerar nova chave</button>
+    </div>
+    <div id="api-key-feedback" style="font-size:0.85em;padding:10px;border-radius:6px;display:none;margin-top:10px"></div>
+</div>
+
+<div class="container" style="margin-top:20px">
+    <h2>Log de auditoria</h2>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Quem fez</th>
+                    <th>Ação</th>
+                    <th>Alvo</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody id="audit-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
 <div id="edit-modal" class="modal">
     <div class="modal-content">
         <h3 id="edit-modal-title">Editar permissão</h3>

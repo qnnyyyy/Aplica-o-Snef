@@ -2,24 +2,21 @@ const router = require('express').Router()
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
-const nodemailer = require('nodemailer')
-const path = require('path')
 const adminMiddleware = require('../adminMiddleware')
-
-const LOGO_PATH = path.resolve(__dirname, '..', '..', '..', 'frontend', 'frontend', 'src', 'assets', 'snef_fr.jpg')
+const { transporter, logoAttachment } = require('../utils/mailer')
 
 module.exports = (dbPromise) => {
 
-    const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: process.env.MAIL_PORT,
-        secure: false,
-        auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS
-        },
-        tls: { rejectUnauthorized: false }
-    })
+    async function registrarAuditoria(req, action, targetEmail, details) {
+        try {
+            await dbPromise.query(
+                'INSERT INTO audit_log (tenant_id, actor_email, action, target_email, details) VALUES (?, ?, ?, ?, ?)',
+                [req.tenantId, req.user.email, action, targetEmail || null, details || null]
+            )
+        } catch (err) {
+            console.error('Erro ao registrar auditoria:', err.message)
+        }
+    }
 
     const simpleAuthMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization']
@@ -53,6 +50,18 @@ module.exports = (dbPromise) => {
             res.json({ status: 'success', data: rows })
         } catch (err) {
             res.status(500).json({ status: 'error', message: 'Erro ao buscar membros' })
+        }
+    })
+
+    router.get('/audit-log', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
+        try {
+            const [rows] = await dbPromise.query(
+                'SELECT actor_email, action, target_email, details, created_at FROM audit_log WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100',
+                [req.tenantId]
+            )
+            res.json({ status: 'success', data: rows })
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao buscar log de auditoria' })
         }
     })
 
@@ -112,12 +121,10 @@ module.exports = (dbPromise) => {
                         <p style="font-size:12px;color:#999;margin-top:30px">Link válido por 48 horas</p>
                     </div>
                 </div>`,
-                attachments: [{
-                    filename: 'snef_fr.jpg',
-                    path: LOGO_PATH,
-                    cid: 'snef-logo'
-                }]
+                attachments: [logoAttachment()]
             })
+
+            await registrarAuditoria(req, 'invite', email, `Convidado como ${grantAdmin ? 'admin' : 'usuário'}`)
 
             res.json({ status: 'success', message: 'Convite enviado com sucesso', data: { id: result.insertId } })
         } catch (err) {
@@ -151,6 +158,8 @@ module.exports = (dbPromise) => {
                 })
             }
 
+            const [targetRows] = await dbPromise.query('SELECT email FROM users WHERE id = ? AND tenant_id = ?', [id, req.tenantId])
+
             const [result] = await dbPromise.query(
                 'UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?',
                 [role, id, req.tenantId]
@@ -159,6 +168,8 @@ module.exports = (dbPromise) => {
             if (result.affectedRows === 0) {
                 return res.status(404).json({ status: 'error', message: 'Usuário não encontrado' })
             }
+
+            await registrarAuditoria(req, 'role_change', targetRows[0]?.email, `Nova permissão: ${role}`)
 
             res.json({ status: 'success', message: 'Permissão atualizada' })
         } catch (err) {
@@ -174,6 +185,8 @@ module.exports = (dbPromise) => {
         }
 
         try {
+            const [targetRows] = await dbPromise.query('SELECT email FROM users WHERE id = ? AND tenant_id = ?', [id, req.tenantId])
+
             const [result] = await dbPromise.query(
                 "DELETE FROM users WHERE id = ? AND tenant_id = ? AND role != 'admin'",
                 [id, req.tenantId]
@@ -182,6 +195,8 @@ module.exports = (dbPromise) => {
             if (result.affectedRows === 0) {
                 return res.status(404).json({ status: 'error', message: 'Usuário não encontrado' })
             }
+
+            await registrarAuditoria(req, 'remove', targetRows[0]?.email, null)
 
             res.json({ status: 'success', message: 'Acesso removido' })
         } catch (err) {

@@ -20,10 +20,12 @@ CREATE TABLE tenants (
     -- Admin principal/dono da localidade. Ninguém consegue alterar a
     -- permissão desse usuário pela aplicação — só mexendo direto no banco.
     owner_user_id BIGINT NULL,
+    -- Chave usada pelas câmeras para autenticar o push de eventos deste tenant
+    api_key VARCHAR(64) NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO tenants (id, name) VALUES (1, 'SNEF');
+INSERT INTO tenants (id, name, api_key) VALUES (1, 'SNEF', SUBSTRING(SHA2(CONCAT(RAND(), NOW()), 256), 1, 40));
 
 -- =========================================================
 -- TABELA: stations
@@ -86,6 +88,7 @@ CREATE TABLE cameras (
 
     zone_id BIGINT NULL,
     last_seen TIMESTAMP NULL,
+    last_alert_sent_at DATETIME NULL,          -- evita reenviar alerta de câmera offline repetidamente
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -288,6 +291,27 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_tenant ON users(tenant_id);
+
+-- =========================================================
+-- TABELA: audit_log
+-- Registro de ações administrativas (convites, mudança de permissão, remoção)
+-- =========================================================
+CREATE TABLE audit_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    actor_name VARCHAR(150) NULL,
+    actor_email VARCHAR(150) NULL,
+    action VARCHAR(64) NOT NULL,
+    target_email VARCHAR(150) NULL,
+    details VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_audit_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
+);
+
+CREATE INDEX idx_audit_tenant ON audit_log(tenant_id);
 
 -- =========================================================
 -- TRIGGER: Agregação automática ao inserir payload

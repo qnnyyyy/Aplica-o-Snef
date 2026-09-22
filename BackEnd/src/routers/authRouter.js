@@ -2,23 +2,9 @@ const router = require('express').Router()
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
-const nodemailer = require('nodemailer')
-const path = require('path')
-
-const LOGO_PATH = path.resolve(__dirname, '..', '..', '..', 'frontend', 'frontend', 'src', 'assets', 'snef_fr.jpg')
+const { transporter, logoAttachment } = require('../utils/mailer')
 
 module.exports = function (dbPromise) {
-
-    const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: process.env.MAIL_PORT,
-        secure: false,
-        auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS
-        },
-        tls: { rejectUnauthorized: false }
-    })
 
     const simpleAuthMiddleware = (req, res, next) => {
         const authHeader = req.headers['authorization']
@@ -92,9 +78,10 @@ module.exports = function (dbPromise) {
 
         try {
             // cada cadastro cria seu próprio tenant; quem cria vira admin dele
+            const apiKey = crypto.randomBytes(20).toString('hex')
             const [tenantResult] = await dbPromise.query(
-                'INSERT INTO tenants (name) VALUES (?)',
-                [locationName]
+                'INSERT INTO tenants (name, api_key) VALUES (?, ?)',
+                [locationName, apiKey]
             )
             const tenantId = tenantResult.insertId
 
@@ -134,7 +121,28 @@ module.exports = function (dbPromise) {
         }
     })
 
-    function issueLoginResponse(res, user) {
+    function enviarAlertaLogin(user, req) {
+        const ip = (req.headers['x-forwarded-for'] || req.ip || '').replace('::ffff:', '')
+        const quando = new Date().toLocaleString('pt-BR')
+
+        transporter.sendMail({
+            from: process.env.MAIL_FROM,
+            to: user.email,
+            subject: 'Novo acesso à sua conta | SNEF',
+            html: `
+            <div style="background:#f4f2f8;padding:40px;font-family:Arial;text-align:center">
+                <div style="max-width:420px;background:#fff;border-radius:14px;padding:30px;margin:auto">
+                    <img src="cid:snef-logo" alt="Groupe SNEF" style="max-width:140px;margin-bottom:20px">
+                    <h2 style="color:#2b2142">Novo acesso detectado</h2>
+                    <p>Olá ${user.name}, sua conta SNEF acabou de ser acessada em <strong>${quando}</strong>${ip ? ` a partir do IP <strong>${ip}</strong>` : ''}.</p>
+                    <p style="color:#888;font-size:13px">Se não foi você, altere sua senha imediatamente.</p>
+                </div>
+            </div>`,
+            attachments: [logoAttachment()]
+        }).catch(err => console.error('Erro ao enviar alerta de login:', err.message))
+    }
+
+    function issueLoginResponse(res, user, req) {
         const tenantId = user.tenant_id || 1
         const role = (user.role || 'viewer').toLowerCase()
 
@@ -143,6 +151,8 @@ module.exports = function (dbPromise) {
             process.env.JWT_SECRET,
             { expiresIn: '8h' }
         )
+
+        enviarAlertaLogin(user, req)
 
         res.json({
             status: 'success',
@@ -182,7 +192,7 @@ module.exports = function (dbPromise) {
             }
 
             if (matches.length === 1) {
-                return issueLoginResponse(res, matches[0])
+                return issueLoginResponse(res, matches[0], req)
             }
 
             // senha válida em mais de uma conta: pede pra escolher o tenant
@@ -229,7 +239,7 @@ module.exports = function (dbPromise) {
                 return res.status(404).json({ message: 'Conta não encontrada' })
             }
 
-            issueLoginResponse(res, users[0])
+            issueLoginResponse(res, users[0], req)
         } catch {
             res.status(403).json({ message: 'Seleção expirada, faça login novamente' })
         }
@@ -275,11 +285,7 @@ module.exports = function (dbPromise) {
                         <p style="font-size:12px;color:#999;margin-top:30px">Link válido por 1 hora</p>
                     </div>
                 </div>`,
-                attachments: [{
-                    filename: 'snef_fr.jpg',
-                    path: LOGO_PATH,
-                    cid: 'snef-logo'
-                }]
+                attachments: [logoAttachment()]
             })
 
             res.json({ status: 'success' })

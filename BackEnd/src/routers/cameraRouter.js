@@ -4,8 +4,10 @@ const tenantMiddleware = require('../tenantMiddleware')
 const adminMiddleware = require('../adminMiddleware')
 const cameraCrypto = require('../utils/cameraCrypto')
 const vivotekClient = require('../services/vivotekClient')
+const cameraApiKeyMiddleware = require('../cameraApiKeyMiddleware')
 
 module.exports = (db) => {
+    const verifyCameraApiKey = cameraApiKeyMiddleware(db)
 
     router.get('/', tenantMiddleware, async (req, res) => {
         try {
@@ -240,12 +242,12 @@ module.exports = (db) => {
         }
     })
 
-    router.post('/vivotek/push', async (req, res) => {
+    router.post('/vivotek/push', verifyCameraApiKey, async (req, res) => {
         try {
             const payload = req.body
             const cameraIp = payload.Device?.IP || req.ip.replace('::ffff:', '')
 
-            const tenantId = payload.TenantId || 1
+            const tenantId = req.tenantId
 
             let inCount = 0
             let outCount = 0
