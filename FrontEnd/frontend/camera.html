@@ -5,6 +5,7 @@
     <title>SNEF | Gerenciar Câmeras</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
         (function() {
             if (!localStorage.getItem('token')) window.location.href = 'login.html';
@@ -17,17 +18,58 @@
             --cor-azul-snef: #368D6D;
             --cor-borda: #E0E0E0;
             --cor-texto: #333;
+            --cor-logout: #D9534F;
+            --cor-botao-hover: #286B52;
         }
 
         * { box-sizing: border-box; }
 
-        body { 
-            font-family: 'Montserrat', sans-serif; 
-            background: var(--cor-fundo); 
-            padding: 15px; 
-            margin: 0; 
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--cor-fundo);
+            padding: 15px;
+            margin: 0;
             color: var(--cor-texto);
         }
+
+        #header-snef {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--cor-borda);
+            padding-bottom: 15px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #header-snef h2 {
+            font-size: 1.6em;
+            color: var(--cor-azul-snef);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .animated-button, .btn-logout {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .animated-button { background-color: var(--cor-azul-snef); color: #fff; }
+        .animated-button:hover { background-color: var(--cor-botao-hover); transform: translateY(-1px); }
+        .btn-logout { background-color: var(--cor-logout); color: #fff; }
+        .btn-logout:hover { opacity: 0.9; transform: translateY(-1px); }
 
         .container { 
             max-width: 1100px; 
@@ -194,6 +236,12 @@
 </head>
 <body>
 
+<header id="header-snef">
+    <a href="index.html" style="text-decoration:none"><button class="animated-button"><i class="fa-solid fa-house"></i> Home</button></a>
+    <h2>SNEF</h2>
+    <button id="btn-logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+</header>
+
 <div class="container">
     <h1>Gerenciar Câmeras</h1>
     
@@ -263,6 +311,11 @@
             closeModal();
         }
     }
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
 </script>
 
 </body>

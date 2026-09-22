@@ -97,13 +97,13 @@ function renderizarEquipe(membros) {
 
         acoes += isMaintenance
             ? `<button class="btn-maintenance" data-id="${m.id}" data-enabled="0">Remover Manutenção</button>`
-            : `<button class="btn-maintenance" data-id="${m.id}" data-name="${m.name}" data-phone="${m.phone_number || ''}" data-enabled="1">🔧 Manutenção</button>`
+            : `<button class="btn-maintenance" data-id="${m.id}" data-name="${m.name}" data-phone="${m.phone_number || ''}" data-enabled="1"><i class="fa-solid fa-screwdriver-wrench"></i> Manutenção</button>`
 
         const permissaoLabel = isDono ? 'Dono' : (isAdmin ? 'Admin' : 'Usuário')
 
         return `
             <tr>
-                <td>${m.name}${isMaintenance ? ' <span class="badge badge-maintenance">🔧 Manutenção</span>' : ''}</td>
+                <td>${m.name}${isMaintenance ? ' <span class="badge badge-maintenance"><i class="fa-solid fa-screwdriver-wrench"></i> Manutenção</span>' : ''}</td>
                 <td>${m.email}</td>
                 <td><span class="badge ${isDono || isAdmin ? 'badge-admin' : 'badge-viewer'}">${permissaoLabel}</span></td>
                 <td>${acoes}</td>

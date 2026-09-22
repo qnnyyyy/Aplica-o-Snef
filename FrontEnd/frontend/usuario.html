@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SNEF - Perfil do Usuário</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
         (function() {
             if (!localStorage.getItem('token')) window.location.href = 'login.html';
@@ -56,13 +57,38 @@
             margin-top: 10px;
         }
         .btn-back {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             text-align: center;
             margin-top: 15px;
+            padding: 8px;
+            border-radius: 4px;
             color: #666;
             text-decoration: none;
             font-size: 0.9em;
+            transition: background 0.2s, color 0.2s;
         }
+        .btn-back:hover { background: rgba(54, 141, 109, 0.08); color: var(--cor-azul-snef); }
+        .btn-logout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            background: #D9534F;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            margin-top: 8px;
+            transition: opacity 0.2s;
+        }
+        .btn-logout:hover { opacity: 0.9; }
         #message { margin-top: 15px; text-align: center; font-size: 0.9em; }
     </style>
 </head>
@@ -85,10 +111,17 @@
         </div>
         <button type="submit" class="btn-save">Salvar Alterações</button>
     </form>
-    <a href="index.html" class="btn-back">Voltar para Home</a>
+    <a href="index.html" class="btn-back"><i class="fa-solid fa-house"></i> Voltar para Home</a>
+    <button id="btn-logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
     <div id="message"></div>
 </div>
 
 <script type="module" src="./src/controllers/usuario.js"></script>
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+</script>
 </body>
 </html>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SNEF - Dashboard Gráfico</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         (function() {
@@ -73,6 +74,10 @@
         }
 
         .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             background: var(--cor-snef);
             color: white;
             border: none;
@@ -86,6 +91,8 @@
         }
 
         .btn:hover { opacity: 0.9; }
+
+        .btn-logout { background: #D9534F; }
 
         .chart-grid {
             display: grid;
@@ -151,8 +158,9 @@
 <header id="header-snef">
     <h1>SNEF <small style="font-size: 0.5em; color: #666; vertical-align: middle;">| ANALYTICS</small></h1>
     <div style="display: flex; gap: 8px;">
-        <a href="index.html" style="text-decoration:none"><button class="btn">Home</button></a>
-        <a href="reports.html" style="text-decoration:none"><button class="btn">Relatórios</button></a>
+        <a href="index.html" style="text-decoration:none"><button class="btn"><i class="fa-solid fa-house"></i> Home</button></a>
+        <a href="reports.html" style="text-decoration:none"><button class="btn"><i class="fa-solid fa-chart-simple"></i> Relatórios</button></a>
+        <button id="btn-logout" class="btn btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
     </div>
 </header>
 
@@ -210,5 +218,11 @@
 </div>
 
 <script type="module" src="./src/controllers/charts.js"></script>
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+</script>
 </body>
 </html>

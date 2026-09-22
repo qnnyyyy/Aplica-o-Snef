@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SNEF - Gerenciar Zonas</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
         (function() {
             if (!localStorage.getItem('token')) window.location.href = 'login.html';
@@ -71,10 +72,27 @@
             font-weight: 500;
         }
 
-        .animated-button:hover { 
-            background-color: var(--cor-botao-hover); 
-            transform: translateY(-1px); 
+        .animated-button:hover {
+            background-color: var(--cor-botao-hover);
+            transform: translateY(-1px);
         }
+
+        .btn-logout {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background-color: var(--cor-logout);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover { opacity: 0.9; transform: translateY(-1px); }
 
         .container {
             max-width: 1200px; 
@@ -196,10 +214,10 @@
 
 <header id="header-snef">
     <div class="header-controls">
-        <a href="index.html" style="text-decoration:none"><button class="animated-button">🏠 Home</button></a>
+        <a href="index.html" style="text-decoration:none"><button class="animated-button"><i class="fa-solid fa-house"></i> Home</button></a>
     </div>
     <h1>SNEF</h1>
-    <div class="hide-mobile" style="width: 100px;"></div>
+    <button id="btn-logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
 </header>
 
 <div class="container">
@@ -261,5 +279,11 @@
 </div>
 
 <script type="module" src="./src/controllers/zona.js"></script>
+<script>
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+</script>
 </body>
 </html>
