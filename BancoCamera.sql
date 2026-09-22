@@ -354,6 +354,27 @@ CREATE TABLE login_attempts (
 CREATE INDEX idx_login_attempts_email ON login_attempts(email, created_at);
 
 -- =========================================================
+-- TABELA: camera_alerts
+-- Histórico de câmeras que caíram/voltaram — alimenta o sininho de
+-- notificação e o relatório semanal de atividade das câmeras
+-- =========================================================
+CREATE TABLE camera_alerts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    camera_id BIGINT NULL,
+    camera_name VARCHAR(255) NULL,
+    type ENUM('OFFLINE','ONLINE') NOT NULL,
+    read_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_camera_alerts_tenant
+        FOREIGN KEY (tenant_id)
+        REFERENCES tenants(id)
+);
+
+CREATE INDEX idx_camera_alerts_tenant ON camera_alerts(tenant_id, created_at);
+
+-- =========================================================
 -- TABELA: audit_log
 -- Registro de ações administrativas (convites, mudança de permissão, remoção)
 -- =========================================================

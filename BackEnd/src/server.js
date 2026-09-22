@@ -63,16 +63,20 @@ app.post('/vivotek/push', verifyCameraApiKey, async (req, res) => {
 
     try {
         const [rows] = await dbPromise.query(
-            'SELECT id, zone_id FROM cameras WHERE camera_id = ? AND tenant_id = ?',
+            'SELECT id, zone_id, name, last_alert_sent_at FROM cameras WHERE camera_id = ? AND tenant_id = ?',
             [cameraSerial, tenantId]
         )
 
         let internalId
         let zoneId = null
+        let wasAlerting = false
+        let cameraName = null
 
         if (rows.length > 0) {
             internalId = rows[0].id
             zoneId = rows[0].zone_id
+            wasAlerting = !!rows[0].last_alert_sent_at
+            cameraName = rows[0].name
         } else {
             try {
                 const [result] = await dbPromise.query(
@@ -100,8 +104,15 @@ app.post('/vivotek/push', verifyCameraApiKey, async (req, res) => {
             [internalId, tenantId, JSON.stringify(payload)]
         )
 
-        // câmera voltou a enviar dados: limpa o alerta de offline pra ela poder alertar de novo se cair no futuro
-        await dbPromise.query('UPDATE cameras SET last_alert_sent_at = NULL WHERE id = ?', [internalId])
+        if (wasAlerting) {
+            // câmera voltou a enviar dados depois de ter sido marcada offline: limpa o alerta
+            // pra poder alertar de novo se cair de novo, e registra a recuperação pro sininho/relatório
+            await dbPromise.query('UPDATE cameras SET last_alert_sent_at = NULL WHERE id = ?', [internalId])
+            await dbPromise.query(
+                'INSERT INTO camera_alerts (tenant_id, camera_id, camera_name, type) VALUES (?, ?, ?, ?)',
+                [tenantId, internalId, cameraName || `Câmera ${cameraSerial}`, 'ONLINE']
+            )
+        }
 
         const analyticData = payload.Analytic_Data
 
@@ -147,6 +158,7 @@ app.listen(PORT, '0.0.0.0', async () => {
         require('./services/reportScheduler').start(dbPromise)
         require('./services/auditDigest').start(dbPromise)
         require('./services/dataRetention').start(dbPromise)
+        require('./services/cameraActivityReport').start(dbPromise)
     } catch (e) {
         console.error('Erro crítico ao iniciar:', e.message)
         process.exit(1)

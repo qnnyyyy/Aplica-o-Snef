@@ -277,5 +277,33 @@ module.exports = (dbPromise) => {
         }
     });
 
+    router.get('/notifications', simpleAuthMiddleware, async (req, res) => {
+        try {
+            const [rows] = await dbPromise.query(
+                `SELECT id, camera_name, type, created_at
+                 FROM camera_alerts
+                 WHERE tenant_id = ? AND read_at IS NULL
+                 ORDER BY created_at DESC
+                 LIMIT 20`,
+                [req.tenantId]
+            );
+            res.json({ status: 'success', data: rows });
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao buscar notificações' });
+        }
+    });
+
+    router.post('/notifications/mark-read', simpleAuthMiddleware, async (req, res) => {
+        try {
+            await dbPromise.query(
+                'UPDATE camera_alerts SET read_at = NOW() WHERE tenant_id = ? AND read_at IS NULL',
+                [req.tenantId]
+            );
+            res.json({ status: 'success' });
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao marcar notificações como lidas' });
+        }
+    });
+
     return router;
 };

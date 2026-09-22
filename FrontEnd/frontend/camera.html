@@ -5,10 +5,16 @@
     <title>SNEF | Gerenciar Câmeras</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+            if (!['admin', 'dono'].includes((localStorage.getItem('role') || '').toLowerCase())) window.location.href = 'index.html';
+        })();
+    </script>
     <style>
         :root {
             --cor-fundo: #F4F7F9;
-            --cor-azul-snef: #368D6D; 
+            --cor-azul-snef: #368D6D;
             --cor-borda: #E0E0E0;
             --cor-texto: #333;
         }

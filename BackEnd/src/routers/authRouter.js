@@ -238,7 +238,7 @@ module.exports = function (dbPromise) {
     }
 
     router.post('/request-registration', async (req, res) => {
-        const { name, email, password, role, tenantId, confirmationKey, phone } = req.body
+        const { name, email, password, role, tenantId, confirmationKey } = req.body
 
         if (!name || !email || !password || !role || !tenantId) {
             return res.status(400).json({ message: 'Dados inválidos' })
@@ -283,8 +283,8 @@ module.exports = function (dbPromise) {
             const decisionTokenExpires = new Date(Date.now() + 7 * 24 * 3600000)
 
             const [result] = await dbPromise.query(
-                'INSERT INTO pending_registrations (tenant_id, name, email, password_hash, requested_role, decision_token, decision_token_expires, phone_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [tenantId, name, email, passwordHash, role, decisionToken, decisionTokenExpires, role === 'viewer' ? (phone || null) : null]
+                'INSERT INTO pending_registrations (tenant_id, name, email, password_hash, requested_role, decision_token, decision_token_expires) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [tenantId, name, email, passwordHash, role, decisionToken, decisionTokenExpires]
             )
 
             notificarPendencia(tenantId, tenantRows[0].name, { name, requestedRole: role, decisionToken, pendingId: result.insertId })

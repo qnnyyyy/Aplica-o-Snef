@@ -320,6 +320,15 @@
                 <div id="loc-list"><a href="#">Carregando...</a></div>
             </div>
         </div>
+        <div class="dropdown">
+            <button class="dropdown-button" id="bellBtn" style="position:relative">
+                🔔
+                <span id="bell-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#D9534F;color:#fff;border-radius:50%;min-width:18px;height:18px;font-size:0.7em;line-height:18px;text-align:center;padding:0 3px;">0</span>
+            </button>
+            <div class="dropdown-menu" id="bellMenu" style="min-width:280px;max-height:340px;overflow-y:auto;">
+                <div id="bell-list"><a href="#">Nenhuma notificação.</a></div>
+            </div>
+        </div>
         <button id="btn-logout" class="btn-logout">Sair</button>
     </div>
 
@@ -562,20 +571,34 @@
     const dropMenu = document.getElementById('dropMenu');
     const locBtn = document.getElementById('locBtn');
     const locMenu = document.getElementById('locMenu');
+    const bellBtn = document.getElementById('bellBtn');
+    const bellMenu = document.getElementById('bellMenu');
+    const bellBadge = document.getElementById('bell-badge');
 
     dropBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         locMenu.style.display = 'none';
+        bellMenu.style.display = 'none';
         dropMenu.style.display = dropMenu.style.display === 'block' ? 'none' : 'block';
     });
     locBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropMenu.style.display = 'none';
+        bellMenu.style.display = 'none';
         locMenu.style.display = locMenu.style.display === 'block' ? 'none' : 'block';
+    });
+    bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropMenu.style.display = 'none';
+        locMenu.style.display = 'none';
+        const abrindo = bellMenu.style.display !== 'block';
+        bellMenu.style.display = abrindo ? 'block' : 'none';
+        if (abrindo) marcarNotificacoesLidas();
     });
     document.addEventListener('click', () => {
         dropMenu.style.display = 'none';
         locMenu.style.display = 'none';
+        bellMenu.style.display = 'none';
     });
 
     if (!['admin', 'dono'].includes(currentRole)) {
@@ -631,7 +654,46 @@
         }
     }
 
+    async function carregarNotificacoes() {
+        const bellList = document.getElementById('bell-list');
+        try {
+            const res = await fetch('/api/notifications', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+
+            if (result.status !== 'success') return;
+
+            const total = result.data.length;
+            bellBadge.style.display = total > 0 ? 'block' : 'none';
+            bellBadge.textContent = total > 9 ? '9+' : total;
+
+            bellList.innerHTML = total === 0
+                ? '<a href="#" style="color:#999">Nenhuma notificação.</a>'
+                : result.data.map(n => `
+                    <a href="#" style="white-space:normal">
+                        📷 <strong>${n.camera_name || 'Câmera'}</strong> ficou offline
+                        <br><span style="font-size:0.75em;color:#999">${new Date(n.created_at).toLocaleString('pt-BR')}</span>
+                    </a>
+                `).join('');
+        } catch {
+            bellList.innerHTML = '<a href="#">Erro ao carregar</a>';
+        }
+    }
+
+    async function marcarNotificacoesLidas() {
+        try {
+            await fetch('/api/notifications/mark-read', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            bellBadge.style.display = 'none';
+        } catch {}
+    }
+
     carregarLocalizacoes();
+    carregarNotificacoes();
+    setInterval(carregarNotificacoes, 30000);
 </script>
 
 </body>
