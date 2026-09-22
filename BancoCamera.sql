@@ -22,6 +22,14 @@ CREATE TABLE tenants (
     owner_user_id BIGINT NULL,
     -- Chave usada pelas câmeras para autenticar o push de eventos deste tenant
     api_key VARCHAR(64) NULL UNIQUE,
+
+    -- Alerta de superlotação: dispara quando "pessoas no local agora" passa desse valor
+    capacity_alert_threshold INT NULL,
+    capacity_alert_sent_at DATETIME NULL,
+
+    -- Webhook do Slack pra receber os mesmos alertas que já vão por e-mail
+    slack_webhook_url VARCHAR(500) NULL,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -327,6 +335,20 @@ CREATE TABLE pending_registrations (
 CREATE INDEX idx_pending_tenant ON pending_registrations(tenant_id);
 CREATE INDEX idx_pending_email ON pending_registrations(email);
 CREATE INDEX idx_pending_token ON pending_registrations(decision_token);
+
+-- =========================================================
+-- TABELA: login_attempts
+-- Histórico de tentativas de login, usado pra bloquear força bruta
+-- =========================================================
+CREATE TABLE login_attempts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(150) NOT NULL,
+    success BOOLEAN NOT NULL,
+    ip VARCHAR(64) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_login_attempts_email ON login_attempts(email, created_at);
 
 -- =========================================================
 -- TABELA: audit_log

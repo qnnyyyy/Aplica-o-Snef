@@ -1,8 +1,10 @@
 const cron = require('node-cron')
 const { transporter, logoAttachment } = require('../utils/mailer')
+const { notifySlack } = require('./notifier')
 
 const OFFLINE_THRESHOLD_MINUTES = 15
 const ALERT_COOLDOWN_HOURS = 6
+const CAPACITY_COOLDOWN_HOURS = 2
 
 function start(dbPromise) {
     cron.schedule('*/20 * * * *', async () => {
@@ -10,6 +12,7 @@ function start(dbPromise) {
             // consulta leve que também mantém o banco ativo (evita power-off por inatividade em planos free)
             await dbPromise.query('SELECT 1')
             await verificarCamerasOffline(dbPromise)
+            await verificarSuperlotacao(dbPromise)
         } catch (err) {
             console.error('Erro no monitor de câmeras:', err.message)
         }
@@ -48,10 +51,71 @@ async function verificarCamerasOffline(dbPromise) {
             await enviarAlertaOffline(admins, cameras)
         }
 
+        const nomes = cameras.map(c => c.name || `Câmera #${c.id}`).join(', ')
+        notifySlack(dbPromise, tenantId, `📷 Câmera(s) sem sinal há mais de ${OFFLINE_THRESHOLD_MINUTES} min: ${nomes}`)
+
         await dbPromise.query(
             `UPDATE cameras SET last_alert_sent_at = NOW() WHERE id IN (${cameras.map(() => '?').join(',')})`,
             cameras.map(c => c.id)
         )
+    }
+}
+
+async function verificarSuperlotacao(dbPromise) {
+    const [tenants] = await dbPromise.query(`
+        SELECT id, name, capacity_alert_threshold, capacity_alert_sent_at
+        FROM tenants
+        WHERE capacity_alert_threshold IS NOT NULL
+    `)
+
+    for (const tenant of tenants) {
+        const [totais] = await dbPromise.query(`
+            SELECT
+                IFNULL(SUM(CAST(raw_json->>'$.Data[0].CountingInfo[0].In' AS UNSIGNED)), 0) AS totalIn,
+                IFNULL(SUM(CAST(raw_json->>'$.Data[0].CountingInfo[0].Out' AS UNSIGNED)), 0) AS totalOut
+            FROM raw_payloads
+            WHERE DATE(received_at) = CURDATE() AND tenant_id = ?
+        `, [tenant.id])
+
+        const ocupacao = Math.max(0, (totais[0].totalIn || 0) - (totais[0].totalOut || 0))
+
+        if (ocupacao <= tenant.capacity_alert_threshold) {
+            if (tenant.capacity_alert_sent_at) {
+                await dbPromise.query('UPDATE tenants SET capacity_alert_sent_at = NULL WHERE id = ?', [tenant.id])
+            }
+            continue
+        }
+
+        const emCooldown = tenant.capacity_alert_sent_at &&
+            (Date.now() - new Date(tenant.capacity_alert_sent_at).getTime()) < CAPACITY_COOLDOWN_HOURS * 3600000
+
+        if (emCooldown) continue
+
+        const [admins] = await dbPromise.query(
+            "SELECT email, name FROM users WHERE tenant_id = ? AND role IN ('ADMIN', 'DONO') AND active = TRUE",
+            [tenant.id]
+        )
+
+        for (const admin of admins) {
+            transporter.sendMail({
+                from: process.env.MAIL_FROM,
+                to: admin.email,
+                subject: `Superlotação | ${tenant.name} | SNEF`,
+                html: `
+                <div style="background:#f4f2f8;padding:40px;font-family:Arial;text-align:center">
+                    <div style="max-width:420px;background:#fff;border-radius:14px;padding:30px;margin:auto">
+                        <img src="cid:snef-logo" alt="Groupe SNEF" style="max-width:140px;margin-bottom:20px">
+                        <h2 style="color:#b3261e">Limite de ocupação ultrapassado</h2>
+                        <p><strong>${tenant.name}</strong> está com <strong>${ocupacao}</strong> pessoas no local agora, acima do limite configurado de ${tenant.capacity_alert_threshold}.</p>
+                    </div>
+                </div>`,
+                attachments: [logoAttachment()]
+            }).catch(err => console.error('Erro ao enviar alerta de superlotação:', err.message))
+        }
+
+        notifySlack(dbPromise, tenant.id, `🚨 ${tenant.name} está com ${ocupacao} pessoas no local, acima do limite de ${tenant.capacity_alert_threshold}.`)
+
+        await dbPromise.query('UPDATE tenants SET capacity_alert_sent_at = NOW() WHERE id = ?', [tenant.id])
     }
 }
 

@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { transporter, logoAttachment } = require('../utils/mailer')
 const { approveRegistration, rejectRegistration } = require('../services/registrationDecisions')
+const { notifySlack } = require('../services/notifier')
 
 module.exports = function (dbPromise) {
 
@@ -232,6 +233,8 @@ module.exports = function (dbPromise) {
                     attachments: [logoAttachment()]
                 }).catch(err => console.error('Erro ao notificar pendência:', err.message))
             }
+
+            notifySlack(dbPromise, tenantId, `📝 ${name} pediu acesso como ${roleLabel} em ${tenantName}.`)
         } catch (err) {
             console.error('Erro ao buscar destinatários da pendência:', err.message)
         }
@@ -458,16 +461,42 @@ module.exports = function (dbPromise) {
         })
     }
 
+    const LOGIN_MAX_ATTEMPTS = 5
+    const LOGIN_WINDOW_MINUTES = 15
+
+    async function registrarTentativaLogin(email, success, req) {
+        const ip = (req.headers['x-forwarded-for'] || req.ip || '').replace('::ffff:', '')
+        try {
+            await dbPromise.query(
+                'INSERT INTO login_attempts (email, success, ip) VALUES (?, ?, ?)',
+                [email, success, ip || null]
+            )
+        } catch (err) {
+            console.error('Erro ao registrar tentativa de login:', err.message)
+        }
+    }
+
     router.post('/login', async (req, res) => {
         const { email, password } = req.body
 
         try {
+            const [recentFails] = await dbPromise.query(
+                `SELECT COUNT(*) AS total FROM login_attempts
+                 WHERE email = ? AND success = FALSE AND created_at >= NOW() - INTERVAL ${LOGIN_WINDOW_MINUTES} MINUTE`,
+                [email]
+            )
+
+            if (recentFails[0].total >= LOGIN_MAX_ATTEMPTS) {
+                return res.status(429).json({ message: `Muitas tentativas de login. Tente novamente em ${LOGIN_WINDOW_MINUTES} minutos.` })
+            }
+
             const [users] = await dbPromise.query(
                 'SELECT * FROM users WHERE email = ?',
                 [email]
             )
 
             if (users.length === 0) {
+                await registrarTentativaLogin(email, false, req)
                 return res.status(401).json({ message: 'Credenciais inválidas' })
             }
 
@@ -479,8 +508,11 @@ module.exports = function (dbPromise) {
             }
 
             if (matches.length === 0) {
+                await registrarTentativaLogin(email, false, req)
                 return res.status(401).json({ message: 'Credenciais inválidas' })
             }
+
+            await registrarTentativaLogin(email, true, req)
 
             if (matches.length === 1) {
                 return issueLoginResponse(res, matches[0], req)

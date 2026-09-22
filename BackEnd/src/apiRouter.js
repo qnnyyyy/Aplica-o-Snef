@@ -206,10 +206,11 @@ module.exports = (dbPromise) => {
 
     router.get('/tenant-info', simpleAuthMiddleware, async (req, res) => {
         try {
-            const isAdmin = (req.user.role || '').toLowerCase() === 'admin';
+            const role = (req.user.role || '').toLowerCase();
+            const isAdmin = role === 'admin' || role === 'dono';
 
             const [tenant] = await dbPromise.query(
-                `SELECT id, name${isAdmin ? ', api_key' : ''} FROM tenants WHERE id = ?`,
+                `SELECT id, name${isAdmin ? ', api_key, capacity_alert_threshold, slack_webhook_url' : ''} FROM tenants WHERE id = ?`,
                 [req.tenantId]
             );
 
@@ -235,7 +236,8 @@ module.exports = (dbPromise) => {
     });
 
     router.post('/tenant-info/regenerate-key', simpleAuthMiddleware, async (req, res) => {
-        if ((req.user.role || '').toLowerCase() !== 'admin') {
+        const role = (req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'dono') {
             return res.status(403).json({ status: 'error', message: 'Apenas admins podem gerar uma nova chave' });
         }
 
@@ -245,6 +247,33 @@ module.exports = (dbPromise) => {
             res.json({ status: 'success', data: { api_key: newKey } });
         } catch (err) {
             res.status(500).json({ status: 'error', message: 'Erro ao gerar nova chave' });
+        }
+    });
+
+    router.put('/tenant-info/settings', simpleAuthMiddleware, async (req, res) => {
+        const role = (req.user.role || '').toLowerCase();
+        if (role !== 'admin' && role !== 'dono') {
+            return res.status(403).json({ status: 'error', message: 'Apenas admins podem alterar essas configurações' });
+        }
+
+        const { capacityThreshold, slackWebhookUrl } = req.body;
+
+        const threshold = capacityThreshold === '' || capacityThreshold === null || capacityThreshold === undefined
+            ? null
+            : Number(capacityThreshold);
+
+        if (threshold !== null && (!Number.isInteger(threshold) || threshold < 1)) {
+            return res.status(400).json({ status: 'error', message: 'Limite de ocupação inválido' });
+        }
+
+        try {
+            await dbPromise.query(
+                'UPDATE tenants SET capacity_alert_threshold = ?, slack_webhook_url = ? WHERE id = ?',
+                [threshold, slackWebhookUrl || null, req.tenantId]
+            );
+            res.json({ status: 'success' });
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao salvar configurações' });
         }
     });
 

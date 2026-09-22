@@ -39,7 +39,12 @@ const els = {
     auditTbody: document.getElementById('audit-tbody'),
 
     pendingTbody: document.getElementById('pending-tbody'),
-    pendingCount: document.getElementById('pending-count')
+    pendingCount: document.getElementById('pending-count'),
+
+    capacityThreshold: document.getElementById('capacity-threshold'),
+    slackWebhook: document.getElementById('slack-webhook'),
+    btnSaveSettings: document.getElementById('btn-save-settings'),
+    settingsFeedback: document.getElementById('settings-feedback')
 }
 
 async function carregarEquipe() {
@@ -229,11 +234,43 @@ async function carregarChaveApi() {
 
         if (result.status === 'success') {
             els.apiKeyValue.value = result.data.tenant.api_key || ''
+            els.capacityThreshold.value = result.data.tenant.capacity_alert_threshold || ''
+            els.slackWebhook.value = result.data.tenant.slack_webhook_url || ''
         }
     } catch (err) {
         els.apiKeyValue.value = 'Erro ao carregar'
     }
 }
+
+function showSettingsFeedback(message, ok) {
+    els.settingsFeedback.textContent = message
+    els.settingsFeedback.style.display = 'block'
+    els.settingsFeedback.style.background = ok ? '#e6f4ea' : '#fdecea'
+    els.settingsFeedback.style.color = ok ? '#1e7d34' : '#b3261e'
+}
+
+els.btnSaveSettings.addEventListener('click', async () => {
+    try {
+        const res = await fetch(`${API_ROOT}/tenant-info/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                capacityThreshold: els.capacityThreshold.value.trim(),
+                slackWebhookUrl: els.slackWebhook.value.trim()
+            })
+        })
+        const result = await res.json()
+
+        if (!res.ok) {
+            showSettingsFeedback(result.message || 'Erro ao salvar configurações', false)
+            return
+        }
+
+        showSettingsFeedback('Configurações salvas!', true)
+    } catch (err) {
+        showSettingsFeedback('Erro ao comunicar com o servidor.', false)
+    }
+})
 
 function showApiKeyFeedback(message, ok) {
     els.apiKeyFeedback.textContent = message
