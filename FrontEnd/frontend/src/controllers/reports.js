@@ -3,7 +3,6 @@ const API_BASE_URL = '/api';
 const elements = {
     btnApply: document.getElementById('btn-apply-filters'),
     tbody: document.getElementById('report-tbody'),
-    station: document.getElementById('station-select'),
     zone: document.getElementById('zone-select'),
     camera: document.getElementById('camera-select'),
     table: document.getElementById('results-table'),
@@ -36,11 +35,8 @@ async function carregarFiltros() {
             allZones = result.data.zones || [];
             allCameras = result.data.cameras || [];
 
-            elements.station.innerHTML = '<option value="">Todas as Estações</option>' + 
-                (result.data.stations || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            atualizarDropdowns(true);
 
-            atualizarDropdowns(true); 
-            
             elements.loading.style.display = 'none';
             elements.btnApply.disabled = false;
         }
@@ -51,29 +47,22 @@ async function carregarFiltros() {
 }
 
 function atualizarDropdowns(resetSelection = false) {
-    const stationId = elements.station.value;
     const currentZone = elements.zone.value;
     const currentCam = elements.camera.value;
 
-    const filteredZones = stationId ? allZones.filter(z => z.station_id == stationId) : allZones;
-    elements.zone.innerHTML = '<option value="">Todas as Zonas</option>' + 
-        filteredZones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
-    
+    elements.zone.innerHTML = '<option value="">Todas as Zonas</option>' +
+        allZones.map(z => `<option value="${z.id}">${z.name}</option>`).join('');
+
     if (!resetSelection && currentZone) elements.zone.value = currentZone;
 
     const selectedZone = elements.zone.value;
-    let filteredCameras = allCameras;
+    const filteredCameras = selectedZone
+        ? allCameras.filter(c => c.zone_id == selectedZone)
+        : allCameras;
 
-    if (selectedZone) {
-        filteredCameras = allCameras.filter(c => c.zone_id == selectedZone);
-    } else if (stationId) {
-        const validZoneIds = filteredZones.map(z => z.id);
-        filteredCameras = allCameras.filter(c => validZoneIds.includes(c.zone_id));
-    }
-
-    elements.camera.innerHTML = '<option value="">Todas as Câmeras</option>' + 
+    elements.camera.innerHTML = '<option value="">Todas as Câmeras</option>' +
         filteredCameras.map(c => `<option value="${c.id}">${c.name} (${c.camera_id || 'N/A'})</option>`).join('');
-    
+
     if (!resetSelection && currentCam) elements.camera.value = currentCam;
 }
 
@@ -88,7 +77,6 @@ async function buscarRelatorio() {
         dateEnd: document.getElementById('date-end').value || '',
         timeStart: document.getElementById('time-start').value || '',
         timeEnd: document.getElementById('time-end').value || '',
-        station: elements.station.value || '',
         zone: elements.zone.value || '',
         camera: elements.camera.value || ''
     });
@@ -130,7 +118,7 @@ function renderizarTabela(dados) {
     let somaIn = 0, somaOut = 0;
 
     if (dados.length === 0) {
-        elements.tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Nenhum registro encontrado</td></tr>';
+        elements.tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Nenhum registro encontrado</td></tr>';
         elements.totalIn.textContent = '0';
         elements.totalOut.textContent = '0';
         return;
@@ -148,7 +136,6 @@ function renderizarTabela(dados) {
             <tr data-index="${index}">
                 <td><input type="checkbox" class="row-check" data-index="${index}"></td>
                 <td>${dataFmt}</td>
-                <td>${row.station || 'N/A'}</td>
                 <td>${row.camera_friendly_name} (${row.camera_serial || 'S/N'})</td>
                 <td>${row.zone}</td>
                 <td class="direction-IN">${valIn}</td>
@@ -201,14 +188,12 @@ elements.checkAll.addEventListener('change', () => {
     atualizarBarraSelecao();
 });
 
-elements.station.addEventListener('change', () => atualizarDropdowns(true));
 elements.zone.addEventListener('change', () => atualizarDropdowns(false));
 elements.btnApply.addEventListener('click', buscarRelatorio);
 
 function mapearLinha(row) {
     return {
         dataHora: new Date(row.event_time).toLocaleString('pt-BR'),
-        estacao: row.station || 'N/A',
         camera: row.camera_friendly_name,
         serial: row.camera_serial || 'S/N',
         zona: row.zone,
@@ -289,7 +274,6 @@ async function exportarExcel(json, prefixo) {
 
     ws.columns = [
         { header: 'Data/Hora', key: 'dataHora', width: 20 },
-        { header: 'Estação', key: 'estacao', width: 18 },
         { header: 'Câmera', key: 'camera', width: 26 },
         { header: 'Serial', key: 'serial', width: 16 },
         { header: 'Zona', key: 'zona', width: 18 },
@@ -334,9 +318,9 @@ async function exportarExcel(json, prefixo) {
         row.getCell('saidas').alignment = { horizontal: 'center' };
     });
 
-    ws.autoFilter = { from: 'A1', to: 'G1' };
+    ws.autoFilter = { from: 'A1', to: 'F1' };
 
-    const totalRow = ws.addRow({ dataHora: '', estacao: '', camera: '', serial: '', zona: 'TOTAL', entradas: somaIn, saidas: somaOut });
+    const totalRow = ws.addRow({ dataHora: '', camera: '', serial: '', zona: 'TOTAL', entradas: somaIn, saidas: somaOut });
     totalRow.eachCell(cell => {
         cell.font = { bold: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9ECEF' } };

@@ -29,10 +29,7 @@ function renderTable(cameras) {
     tbody.innerHTML = cameras.map(c => `
         <tr>
             <td>${c.camera_id || ''}</td>
-            <td>
-                <strong>${c.name}</strong><br>
-                <small style="color:#666">Estação: ${c.station_name || 'Não Vinculada'}</small>
-            </td>
+            <td><strong>${c.name}</strong></td>
             <td>${c.zone_name || 'Geral (Sem Zona)'}</td>
             <td>
                 <span style="color:${c.enabled ? '#28a745' : '#dc3545'};font-weight:bold">
@@ -71,7 +68,7 @@ async function prepareModal(camera) {
         if (result.status === 'success') {
             options += result.data.map(z => `
                 <option value="${z.id}" ${z.id == camera.zone_id ? 'selected' : ''}>
-                    ${z.station_name || 'S/E'} > ${z.name}
+                    ${z.name}
                 </option>
             `).join('')
         }

@@ -4,7 +4,6 @@ const token = localStorage.getItem('token')
 const els = {
     list: document.getElementById('camera-list'),
     empty: document.getElementById('empty-state'),
-    filterStation: document.getElementById('filter-station'),
     filterZone: document.getElementById('filter-zone'),
     filterCamera: document.getElementById('filter-camera'),
     filterIp: document.getElementById('filter-ip'),
@@ -34,19 +33,13 @@ async function apiGet(path) {
 
 async function init() {
     try {
-        const [camerasRes, stationsRes, zonesRes] = await Promise.all([
+        const [camerasRes, zonesRes] = await Promise.all([
             apiGet('/cameras'),
-            apiGet('/stations'),
             apiGet('/zones')
         ])
 
         allCameras = camerasRes.status === 'success' ? camerasRes.data : []
         allZones = zonesRes.status === 'success' ? zonesRes.data : []
-
-        if (stationsRes.status === 'success') {
-            els.filterStation.innerHTML = '<option value="">Todas as Estações</option>' +
-                stationsRes.data.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
-        }
 
         updateZoneOptions()
         updateCameraOptions()
@@ -59,35 +52,27 @@ async function init() {
 }
 
 function updateZoneOptions() {
-    const stationId = els.filterStation.value
-    const filtered = stationId ? allZones.filter(z => String(z.station_id) === stationId) : allZones
     els.filterZone.innerHTML = '<option value="">Todas as Zonas</option>' +
-        filtered.map(z => `<option value="${z.id}">${z.name}</option>`).join('')
+        allZones.map(z => `<option value="${z.id}">${z.name}</option>`).join('')
 }
 
 function updateCameraOptions() {
-    const stationId = els.filterStation.value
     const zoneId = els.filterZone.value
 
-    let filtered = allCameras
-    if (zoneId) {
-        filtered = filtered.filter(c => String(c.zone_id) === zoneId)
-    } else if (stationId) {
-        filtered = filtered.filter(c => String(c.station_id) === stationId)
-    }
+    const filtered = zoneId
+        ? allCameras.filter(c => String(c.zone_id) === zoneId)
+        : allCameras
 
     els.filterCamera.innerHTML = '<option value="">Todas as Câmeras</option>' +
         filtered.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
 }
 
 function getFilteredCameras() {
-    const stationId = els.filterStation.value
     const zoneId = els.filterZone.value
     const cameraId = els.filterCamera.value
     const ipQuery = els.filterIp.value.trim().toLowerCase()
 
     return allCameras.filter(c => {
-        if (stationId && String(c.station_id) !== stationId) return false
         if (zoneId && String(c.zone_id) !== zoneId) return false
         if (cameraId && String(c.id) !== cameraId) return false
         if (ipQuery && !(c.location || '').toLowerCase().includes(ipQuery)) return false
@@ -110,7 +95,7 @@ function renderList() {
         <div class="camera-row">
             <div class="info">
                 <strong>${c.name}</strong>
-                <small>IP: ${c.location || 'N/A'} ${c.station_name ? '· ' + c.station_name : ''} ${c.zone_name ? '· ' + c.zone_name : ''}</small>
+                <small>IP: ${c.location || 'N/A'} ${c.zone_name ? '· ' + c.zone_name : ''}</small>
             </div>
             <button class="btn-view" data-id="${c.id}">View</button>
         </div>
@@ -251,11 +236,6 @@ els.modal.addEventListener('click', (e) => {
     if (e.target === els.modal) closeModal()
 })
 
-els.filterStation.addEventListener('change', () => {
-    updateZoneOptions()
-    updateCameraOptions()
-    renderList()
-})
 els.filterZone.addEventListener('change', () => {
     updateCameraOptions()
     renderList()

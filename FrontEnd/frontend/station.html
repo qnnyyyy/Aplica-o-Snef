@@ -23,7 +23,6 @@
             --cor-botao-fundo: #368D6D; 
             --cor-botao-hover: #286B52; 
             --cor-logout: #D9534F;
-            --cor-edit: #f0ad4e;
         }
 
         body {
@@ -131,81 +130,9 @@
             box-sizing: border-box;
         }
 
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 10px; 
-            min-width: 500px;
-        }
-        
-        table th { 
-            background: #E9ECEF; 
-            text-align: left; 
-            padding: 12px; 
-            border-bottom: 2px solid var(--cor-azul-snef);
-            font-size: 0.9em;
-        }
-        
-        table td { 
-            padding: 12px; 
-            border-bottom: 1px solid var(--cor-borda-detalhe);
-            font-size: 0.9em;
-        }
-
-        .actions-cell {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-
-        .btn-delete { background: var(--cor-logout); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
-        .btn-edit { background: var(--cor-edit); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
-
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            height: 100%;
-            background-color: rgba(0,0,0,0.6); 
-            align-items: center; 
-            justify-content: center;
-            padding: 15px;
-        }
-        
-        .modal-content {
-            background-color: white; 
-            padding: 25px; 
-            border-radius: 8px; 
-            width: 100%; 
-            max-width: 450px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            box-sizing: border-box;
-        }
-        
-        .modal-header h3 { 
-            margin-top: 0; 
-            color: var(--cor-azul-snef); 
-            border-bottom: 1px solid #eee; 
-            padding-bottom: 10px; 
-        }
-        
-        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-        
-        .btn-cancel { background: #999; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; }
-
         @media (min-width: 768px) {
             body { padding: 20px; }
             #header-snef h1 { position: absolute; left: 50%; transform: translateX(-50%); font-size: 2.2em; }
-            .container { grid-template-columns: 1fr 2fr; }
             .card { padding: 25px; }
             .card h2 { font-size: 1.5em; }
         }
@@ -226,60 +153,23 @@
     <button id="btn-logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
 </header>
 
-<div class="container">
+<div class="container" style="max-width:600px">
     <div class="card">
-        <h2>Nova Estação</h2>
+        <h2><i class="fa-solid fa-building"></i> Dados da Estação</h2>
+        <p style="font-size:0.85em;color:#666;margin-top:-8px">
+            Esta é a sua localidade — o mesmo nome que aparece no seletor de Localização. Zonas e câmeras já pertencem a ela automaticamente.
+        </p>
         <form id="station-form">
             <div class="form-group">
                 <label>Nome da Estação</label>
-                <input type="text" id="name" placeholder="Ex: Estação Central" required>
+                <input type="text" id="name" placeholder="Ex: Linha 11 Prata" required>
             </div>
             <div class="form-group">
                 <label>Localização / Endereço</label>
-                <input type="text" id="location" placeholder="Ex: Setor Norte" required>
+                <input type="text" id="location" placeholder="Ex: Av. Paulista, 1000 - São Paulo/SP">
             </div>
-            <button type="submit" class="animated-button" style="width: 100%; justify-content: center;">Gravar Estação</button>
-        </form>
-    </div>
-
-    <div class="card">
-        <h2>Estações Cadastradas</h2>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Localização</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="station-tbody">
-                    <tr><td colspan="3">Carregando estações...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Editar Estação</h3>
-        </div>
-        <form id="edit-form">
-            <input type="hidden" id="edit-id">
-            <div class="form-group">
-                <label>Nome da Estação</label>
-                <input type="text" id="edit-name" required>
-            </div>
-            <div class="form-group">
-                <label>Localização</label>
-                <input type="text" id="edit-location" required>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" id="closeModal">Cancelar</button>
-                <button type="submit" class="animated-button">Salvar Alterações</button>
-            </div>
+            <button type="submit" class="animated-button" style="width: 100%; justify-content: center;"><i class="fa-solid fa-floppy-disk"></i> Salvar Alterações</button>
+            <div id="feedback" style="font-size:0.85em;padding:10px;border-radius:6px;display:none;margin-top:12px"></div>
         </form>
     </div>
 </div>

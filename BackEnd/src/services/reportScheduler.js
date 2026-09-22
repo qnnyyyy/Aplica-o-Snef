@@ -25,7 +25,6 @@ async function enviarRelatoriosSemanais(dbPromise) {
         const [rows] = await dbPromise.query(`
             SELECT
                 rp.received_at AS event_time,
-                s.name AS station,
                 c.name AS camera_friendly_name,
                 IFNULL(z.name, 'Geral') AS zone,
                 CAST(rp.raw_json->>'$.Data[0].CountingInfo[0].In' AS UNSIGNED) AS total_in,
@@ -33,10 +32,9 @@ async function enviarRelatoriosSemanais(dbPromise) {
             FROM raw_payloads rp
             INNER JOIN cameras c ON rp.camera_id = c.id AND c.tenant_id = ?
             LEFT JOIN zones z ON c.zone_id = z.id AND z.tenant_id = ?
-            LEFT JOIN stations s ON z.station_id = s.id AND s.tenant_id = ?
             WHERE rp.tenant_id = ? AND rp.received_at >= NOW() - INTERVAL 7 DAY
             ORDER BY rp.received_at DESC
-        `, [tenant.id, tenant.id, tenant.id, tenant.id])
+        `, [tenant.id, tenant.id, tenant.id])
 
         if (rows.length === 0) continue
 
@@ -75,7 +73,6 @@ async function gerarExcel(rows) {
 
     ws.columns = [
         { header: 'Data/Hora', key: 'dataHora', width: 20 },
-        { header: 'Estação', key: 'estacao', width: 18 },
         { header: 'Câmera', key: 'camera', width: 26 },
         { header: 'Zona', key: 'zona', width: 18 },
         { header: 'Entradas', key: 'entradas', width: 12 },
@@ -98,7 +95,6 @@ async function gerarExcel(rows) {
 
         ws.addRow({
             dataHora: new Date(row.event_time).toLocaleString('pt-BR'),
-            estacao: row.station || 'N/A',
             camera: row.camera_friendly_name,
             zona: row.zone,
             entradas: valIn,
@@ -106,7 +102,7 @@ async function gerarExcel(rows) {
         })
     })
 
-    const totalRow = ws.addRow({ dataHora: '', estacao: '', camera: '', zona: 'TOTAL', entradas: somaIn, saidas: somaOut })
+    const totalRow = ws.addRow({ dataHora: '', camera: '', zona: 'TOTAL', entradas: somaIn, saidas: somaOut })
     totalRow.eachCell(cell => { cell.font = { bold: true } })
 
     return wb.xlsx.writeBuffer()

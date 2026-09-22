@@ -2,14 +2,12 @@ const API_BASE_URL = '/api';
 let lineChart, barChart;
 let lastFetchedData = [];
 
-let allStations = [];
 let allZones = [];
 let allCameras = [];
 
 const elements = {
     dateStart: document.getElementById('date-start'),
     dateEnd: document.getElementById('date-end'),
-    station: document.getElementById('station-select'),
     zone: document.getElementById('zone-select'),
     camera: document.getElementById('camera-select'),
     btnUpdate: document.getElementById('btn-update'),
@@ -21,7 +19,6 @@ async function fetchChartData() {
         dateStart: elements.dateStart.value,
         dateEnd: elements.dateEnd.value,
         camera: elements.camera.value,
-        station: elements.station.value,
         zone: elements.zone.value
     };
 
@@ -41,15 +38,10 @@ async function fetchChartData() {
 }
 
 function updateZoneDropdown() {
-    const stationId = elements.station.value;
     elements.zone.innerHTML = '<option value="">TODAS AS ZONAS</option>';
     elements.camera.innerHTML = '<option value="all">TODAS CÂMERAS</option>';
 
-    const filteredZones = stationId 
-        ? allZones.filter(z => z.station_id == stationId) 
-        : allZones;
-
-    filteredZones.forEach(z => {
+    allZones.forEach(z => {
         const opt = document.createElement('option');
         opt.value = z.id;
         opt.textContent = z.name.toUpperCase();
@@ -60,20 +52,12 @@ function updateZoneDropdown() {
 }
 
 function updateCameraDropdown() {
-    const stationId = elements.station.value;
     const zoneId = elements.zone.value;
     elements.camera.innerHTML = '<option value="all">TODAS CÂMERAS</option>';
 
-    let filteredCameras = allCameras;
-
-    if (zoneId) {
-        filteredCameras = allCameras.filter(c => c.zone_id == zoneId);
-    } else if (stationId) {
-        const zoneIdsForStation = allZones
-            .filter(z => z.station_id == stationId)
-            .map(z => z.id);
-        filteredCameras = allCameras.filter(c => zoneIdsForStation.includes(c.zone_id));
-    }
+    const filteredCameras = zoneId
+        ? allCameras.filter(c => c.zone_id == zoneId)
+        : allCameras;
 
     filteredCameras.forEach(c => {
         const opt = document.createElement('option');
@@ -188,7 +172,6 @@ elements.rankType.addEventListener('change', () => {
     if (lastFetchedData.length > 0) renderCharts(lastFetchedData);
 });
 
-elements.station.addEventListener('change', updateZoneDropdown);
 elements.zone.addEventListener('change', updateCameraDropdown);
 
 async function init() {
@@ -203,16 +186,8 @@ async function init() {
         const result = await resp.json();
         
         if (result.status === 'success') {
-            allStations = result.data.stations || [];
             allZones = result.data.zones || [];
             allCameras = result.data.cameras || [];
-
-            allStations.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id;
-                opt.textContent = s.name.toUpperCase();
-                elements.station.appendChild(opt);
-            });
 
             updateZoneDropdown();
         }

@@ -114,8 +114,8 @@ module.exports = (dbPromise) => {
     });
 
     router.get('/reports', simpleAuthMiddleware, async (req, res) => {
-        const { dateStart, dateEnd, timeStart, timeEnd, station, zone, camera } = req.query;
-        
+        const { dateStart, dateEnd, timeStart, timeEnd, zone, camera } = req.query;
+
         try {
             let conditions = [];
             let params = [];
@@ -128,23 +128,18 @@ module.exports = (dbPromise) => {
                 conditions.push('rp.received_at >= ?');
                 params.push(tsStart);
             }
-            
+
             if (dateEnd && dateEnd.trim() !== '') {
                 const tsEnd = timeEnd && timeEnd.trim() !== '' ? `${dateEnd} ${timeEnd}:59` : `${dateEnd} 23:59:59`;
                 conditions.push('rp.received_at <= ?');
                 params.push(tsEnd);
             }
 
-            if (station && station !== "") {
-                conditions.push('z.station_id = ?');
-                params.push(station);
-            }
-            
             if (zone && zone !== "") {
                 conditions.push('c.zone_id = ?');
                 params.push(zone);
             }
-            
+
             if (camera && camera !== "" && camera !== "all") {
                 conditions.push('c.id = ?');
                 params.push(camera);
@@ -155,7 +150,6 @@ module.exports = (dbPromise) => {
             const query = `
                 SELECT
                     rp.received_at AS event_time,
-                    s.name AS station,
                     c.name AS camera_friendly_name,
                     c.camera_id AS camera_serial,
                     IFNULL(z.name, 'Geral') AS zone,
@@ -164,40 +158,32 @@ module.exports = (dbPromise) => {
                 FROM raw_payloads rp
                 INNER JOIN cameras c ON rp.camera_id = c.id AND c.tenant_id = ?
                 LEFT JOIN zones z ON c.zone_id = z.id AND z.tenant_id = ?
-                LEFT JOIN stations s ON z.station_id = s.id AND s.tenant_id = ?
                 ${whereClause}
                 ORDER BY rp.received_at DESC
                 LIMIT 2000
             `;
-            
-            const queryParams = [req.tenantId, req.tenantId, req.tenantId, ...params];
-            
-            console.log('Executando query reports com params:', queryParams.length);
-            
+
+            const queryParams = [req.tenantId, req.tenantId, ...params];
+
             const [rows] = await dbPromise.query(query, queryParams);
             res.json({ status: 'success', data: { details: rows } });
         } catch (err) {
             console.error("Erro SQL no Relatório:", err.message);
-            console.error("SQL error:", err.sql);
             res.status(500).json({ status: 'error', message: 'Erro ao gerar relatório: ' + err.message });
         }
     });
 
     router.get('/reports/filters', simpleAuthMiddleware, async (req, res) => {
         try {
-            const [stations] = await dbPromise.query(
-                'SELECT id, name FROM stations WHERE tenant_id = ? ORDER BY name', 
-                [req.tenantId]
-            );
             const [zones] = await dbPromise.query(
-                'SELECT id, name, station_id FROM zones WHERE tenant_id = ? ORDER BY name', 
+                'SELECT id, name FROM zones WHERE tenant_id = ? ORDER BY name',
                 [req.tenantId]
             );
             const [cameras] = await dbPromise.query(
                 'SELECT id, name, camera_id, zone_id FROM cameras WHERE enabled = TRUE AND tenant_id = ? ORDER BY name', 
                 [req.tenantId]
             );
-            res.json({ status: 'success', data: { stations, zones, cameras } });
+            res.json({ status: 'success', data: { zones, cameras } });
         } catch (err) {
             console.error('Erro em /reports/filters:', err);
             res.status(500).json({ status: 'error', message: err.message });
@@ -210,7 +196,7 @@ module.exports = (dbPromise) => {
             const isAdmin = role === 'admin' || role === 'dono';
 
             const [tenant] = await dbPromise.query(
-                `SELECT id, name${isAdmin ? ', api_key, capacity_alert_threshold' : ''} FROM tenants WHERE id = ?`,
+                `SELECT id, name, location${isAdmin ? ', api_key, capacity_alert_threshold' : ''} FROM tenants WHERE id = ?`,
                 [req.tenantId]
             );
 
@@ -218,9 +204,8 @@ module.exports = (dbPromise) => {
                 SELECT
                     (SELECT COUNT(*) FROM cameras WHERE tenant_id = ?) as total_cameras,
                     (SELECT COUNT(*) FROM users WHERE tenant_id = ? AND active = TRUE) as total_users,
-                    (SELECT COUNT(*) FROM stations WHERE tenant_id = ?) as total_stations,
                     (SELECT COUNT(*) FROM zones WHERE tenant_id = ?) as total_zones
-            `, [req.tenantId, req.tenantId, req.tenantId, req.tenantId]);
+            `, [req.tenantId, req.tenantId, req.tenantId]);
 
             res.json({
                 status: 'success',

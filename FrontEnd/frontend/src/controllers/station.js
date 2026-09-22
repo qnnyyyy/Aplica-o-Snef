@@ -2,115 +2,57 @@ const API_URL = '/api/stations';
 const token = localStorage.getItem('token');
 
 const stationForm = document.getElementById('station-form');
-const editForm = document.getElementById('edit-form');
-const tbody = document.getElementById('station-tbody');
-const editModal = document.getElementById('editModal');
-const closeModal = document.getElementById('closeModal');
+const nameInput = document.getElementById('name');
+const locationInput = document.getElementById('location');
+const feedback = document.getElementById('feedback');
 
-async function listStations() {
+function showFeedback(message, ok) {
+    feedback.textContent = message;
+    feedback.style.display = 'block';
+    feedback.style.background = ok ? '#e6f4ea' : '#fdecea';
+    feedback.style.color = ok ? '#1e7d34' : '#b3261e';
+}
+
+async function carregarEstacao() {
     try {
         const res = await fetch(API_URL, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await res.json();
 
-        if (result.status === 'success') {
-            tbody.innerHTML = result.data.map(st => `
-                <tr>
-                    <td><strong>${st.name}</strong></td>
-                    <td>${st.location || 'N/A'}</td>
-                    <td>
-                        <button class="btn-edit" data-id="${st.id}" data-name="${st.name}" data-location="${st.location}">Editar</button>
-                        <button class="btn-delete" data-id="${st.id}">Excluir</button>
-                    </td>
-                </tr>
-            `).join('');
-
-            document.querySelectorAll('.btn-edit').forEach(btn => {
-                btn.onclick = () => openEditModal(btn.dataset);
-            });
-
-            document.querySelectorAll('.btn-delete').forEach(btn => {
-                btn.onclick = () => deleteStation(btn.dataset.id);
-            });
+        if (result.status === 'success' && result.data) {
+            nameInput.value = result.data.name || '';
+            locationInput.value = result.data.location || '';
         }
     } catch (err) {
-        console.error(err);
-        tbody.innerHTML = '<tr><td colspan="3">Erro ao carregar dados.</td></tr>';
+        showFeedback('Erro ao carregar dados da estação.', false);
     }
 }
 
 stationForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = {
-        name: document.getElementById('name').value,
-        location: document.getElementById('location').value
-    };
+    feedback.style.display = 'none';
+
     try {
         const res = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(data)
-        });
-        if (res.ok) {
-            stationForm.reset();
-            listStations();
-        }
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-function openEditModal(data) {
-    document.getElementById('edit-id').value = data.id;
-    document.getElementById('edit-name').value = data.name;
-    document.getElementById('edit-location').value = data.location;
-    editModal.style.display = 'flex';
-}
-
-closeModal.onclick = () => editModal.style.display = 'none';
-
-editForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('edit-id').value;
-    const data = {
-        name: document.getElementById('edit-name').value,
-        location: document.getElementById('edit-location').value
-    };
-
-    try {
-        const res = await fetch(`${API_URL}/${id}`, {
             method: 'PUT',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ name: nameInput.value, location: locationInput.value })
         });
         const result = await res.json();
-        if (result.status === 'success') {
-            editModal.style.display = 'none';
-            listStations();
+
+        if (!res.ok) {
+            showFeedback(result.message || 'Erro ao salvar', false);
+            return;
         }
+
+        showFeedback('Salvo com sucesso!', true);
     } catch (err) {
-        console.error(err);
+        showFeedback('Erro ao comunicar com o servidor.', false);
     }
 });
 
-async function deleteStation(id) {
-    if (!confirm('Deseja realmente excluir esta estação?')) return;
-    try {
-        const res = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) listStations();
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', listStations);
+document.addEventListener('DOMContentLoaded', carregarEstacao);

@@ -22,15 +22,12 @@ module.exports = (db) => {
                     c.location,
                     c.enabled,
                     c.zone_id,
-                    z.name AS zone_name,
-                    s.name AS station_name,
-                    s.id AS station_id
+                    z.name AS zone_name
                 FROM cameras c
                 LEFT JOIN zones z ON c.zone_id = z.id AND z.tenant_id = ?
-                LEFT JOIN stations s ON z.station_id = s.id AND s.tenant_id = ?
                 WHERE c.tenant_id = ?
                 ORDER BY c.created_at DESC
-            `, [req.tenantId, req.tenantId, req.tenantId])
+            `, [req.tenantId, req.tenantId])
             res.json({ status: 'success', data: rows })
         } catch (err) {
             res.status(500).json({ status: 'error', message: 'Erro ao buscar câmeras' })

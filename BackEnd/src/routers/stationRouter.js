@@ -3,92 +3,37 @@ const router = express.Router();
 const tenantMiddleware = require('../tenantMiddleware');
 const adminMiddleware = require('../adminMiddleware');
 
+// Cada tenant já é uma estação/localidade — esta rota só edita o nome e o
+// endereço do próprio tenant, não existe mais uma lista de estações.
 module.exports = (dbPromise) => {
-    
+
     router.get('/', tenantMiddleware, async (req, res) => {
         try {
             const [rows] = await dbPromise.query(
-                'SELECT * FROM stations WHERE tenant_id = ? ORDER BY name', 
+                'SELECT id, name, location FROM tenants WHERE id = ?',
                 [req.tenantId]
             );
-            res.json({ status: 'success', data: rows });
+            res.json({ status: 'success', data: rows[0] || null });
         } catch (err) {
-            console.error('ERRO GET STATIONS:', err);
-            res.status(500).json({ status: 'error', message: err.message });
+            res.status(500).json({ status: 'error', message: 'Erro ao buscar dados da estação' });
         }
     });
 
-    router.post('/', tenantMiddleware, adminMiddleware, async (req, res) => {
+    router.put('/', tenantMiddleware, adminMiddleware, async (req, res) => {
         const { name, location } = req.body;
-        
-        if (!name) {
+
+        if (!name || !name.trim()) {
             return res.status(400).json({ status: 'error', message: 'Nome da estação é obrigatório' });
         }
-        
-        try {
-            const [result] = await dbPromise.query(
-                'INSERT INTO stations (name, location, tenant_id) VALUES (?, ?, ?)', 
-                [name, location || null, req.tenantId]
-            );
-            
-            res.json({ 
-                status: 'success', 
-                data: { id: result.insertId, name, location } 
-            });
-        } catch (err) {
-            console.error('ERRO POST STATIONS:', err);
-            res.status(500).json({ status: 'error', message: err.message });
-        }
-    });
-
-    router.put('/:id', tenantMiddleware, adminMiddleware, async (req, res) => {
-        const { id } = req.params;
-        const { name, location } = req.body;
 
         try {
-            const [result] = await dbPromise.query(
-                'UPDATE stations SET name = ?, location = ? WHERE id = ? AND tenant_id = ?',
-                [name, location, id, req.tenantId]
+            await dbPromise.query(
+                'UPDATE tenants SET name = ?, location = ? WHERE id = ?',
+                [name.trim(), location || null, req.tenantId]
             );
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ status: 'error', message: 'Estação não encontrada' });
-            }
-
             res.json({ status: 'success', message: 'Estação atualizada com sucesso' });
         } catch (err) {
-            console.error('ERRO PUT STATIONS:', err);
-            res.status(500).json({ status: 'error', message: err.message });
-        }
-    });
-
-    router.delete('/:id', tenantMiddleware, adminMiddleware, async (req, res) => {
-        try {
-            const [zonesCheck] = await dbPromise.query(
-                'SELECT COUNT(*) as count FROM zones WHERE station_id = ? AND tenant_id = ?',
-                [req.params.id, req.tenantId]
-            );
-            
-            if (zonesCheck[0].count > 0) {
-                return res.status(400).json({ 
-                    status: 'error', 
-                    message: 'Não é possível excluir estação com zonas vinculadas' 
-                });
-            }
-            
-            const [result] = await dbPromise.query(
-                'DELETE FROM stations WHERE id = ? AND tenant_id = ?', 
-                [req.params.id, req.tenantId]
-            );
-            
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ status: 'error', message: 'Estação não encontrada' });
-            }
-            
-            res.json({ status: 'success', message: 'Estação removida' });
-        } catch (err) {
-            console.error('ERRO DELETE STATIONS:', err);
-            res.status(500).json({ status: 'error', message: err.message });
+            res.status(500).json({ status: 'error', message: 'Erro ao atualizar estação' });
         }
     });
 

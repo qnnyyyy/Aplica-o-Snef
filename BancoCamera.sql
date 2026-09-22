@@ -17,6 +17,9 @@ USE snef_people_count;
 CREATE TABLE tenants (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
+    -- Cada tenant JÁ é uma estação/localidade (ex: "Linha 11 Prata") — não existe
+    -- uma tabela separada de "estações" dentro do tenant, seria redundante.
+    location VARCHAR(255) NULL,
     -- Admin principal/dono da localidade. Ninguém consegue alterar a
     -- permissão desse usuário pela aplicação — só mexendo direto no banco.
     owner_user_id BIGINT NULL,
@@ -33,39 +36,15 @@ CREATE TABLE tenants (
 INSERT INTO tenants (id, name, api_key) VALUES (1, 'SNEF', SUBSTRING(SHA2(CONCAT(RAND(), NOW()), 256), 1, 40));
 
 -- =========================================================
--- TABELA: stations
--- Estações / locais maiores (ex: Estação 11)
--- =========================================================
-CREATE TABLE stations (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tenant_id BIGINT NOT NULL DEFAULT 1,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    location VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_stations_tenant
-        FOREIGN KEY (tenant_id)
-        REFERENCES tenants(id)
-);
-
-CREATE INDEX idx_stations_tenant ON stations(tenant_id);
-
--- =========================================================
 -- TABELA: zones
--- Zonas físicas monitoradas
+-- Zonas físicas monitoradas dentro da localidade (tenant)
 -- =========================================================
 CREATE TABLE zones (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL DEFAULT 1,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(255),
-    station_id BIGINT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_zone_station
-        FOREIGN KEY (station_id)
-        REFERENCES stations(id)
-        ON DELETE CASCADE,
 
     CONSTRAINT fk_zones_tenant
         FOREIGN KEY (tenant_id)
@@ -435,13 +414,11 @@ END//
 DELIMITER ;
 
 
-SELECT 
-    c.name AS camera, 
-    z.name AS zona, 
-    s.name AS estacao
+SELECT
+    c.name AS camera,
+    z.name AS zona
 FROM cameras c
-INNER JOIN zones z ON c.zone_id = z.id
-INNER JOIN stations s ON z.station_id = s.id;
+INNER JOIN zones z ON c.zone_id = z.id;
 
 
 INSERT INTO raw_payloads (camera_id, received_at, raw_json)

@@ -228,12 +228,6 @@
                 <label>Nome da Zona</label>
                 <input type="text" id="zone-name" placeholder="Ex: Catracas Entrada" required>
             </div>
-            <div class="form-group">
-                <label>Estação Vinculada</label>
-                <select id="station-select" required>
-                    <option value="">Carregando estações...</option>
-                </select>
-            </div>
             <button type="submit" class="animated-button" style="width: 100%; justify-content: center;">Gravar Zona</button>
         </form>
     </div>
@@ -245,12 +239,11 @@
                 <thead>
                     <tr>
                         <th>Zona</th>
-                        <th>Estação</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="zone-tbody">
-                    <tr><td colspan="3">Carregando zonas...</td></tr>
+                    <tr><td colspan="2">Carregando zonas...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -265,10 +258,6 @@
             <div class="form-group">
                 <label>Nome da Zona</label>
                 <input type="text" id="edit-zone-name" required>
-            </div>
-            <div class="form-group">
-                <label>Estação</label>
-                <select id="edit-station-select" required></select>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-delete" style="background:#999" id="closeZoneModal">Cancelar</button>
