@@ -61,13 +61,15 @@ function renderizarEquipe(membros) {
     }
 
     els.tbody.innerHTML = membros.map(m => {
-        const isAdmin = (m.role || '').toLowerCase() === 'admin'
+        const role = (m.role || '').toLowerCase()
+        const isAdmin = role === 'admin'
+        const isDono = role === 'dono'
         const isSelf = Number(m.id) === Number(meId)
-        const isOwner = Number(m.is_owner) === 1
+        const isOwner = isDono || Number(m.is_owner) === 1
 
         let acoes
         if (isOwner) {
-            acoes = 'Admin principal'
+            acoes = 'Dono principal'
         } else if (isSelf) {
             acoes = 'Você'
         } else {
@@ -77,11 +79,13 @@ function renderizarEquipe(membros) {
             `
         }
 
+        const permissaoLabel = isDono ? 'Dono' : (isAdmin ? 'Admin' : 'Usuário')
+
         return `
             <tr>
-                <td>${m.name}${isOwner ? ' <span class="badge badge-admin" style="margin-left:6px">Dono</span>' : ''}</td>
+                <td>${m.name}</td>
                 <td>${m.email}</td>
-                <td><span class="badge ${isAdmin ? 'badge-admin' : 'badge-viewer'}">${isAdmin ? 'Admin' : 'Usuário'}</span></td>
+                <td><span class="badge ${isDono || isAdmin ? 'badge-admin' : 'badge-viewer'}">${permissaoLabel}</span></td>
                 <td>${acoes}</td>
             </tr>
         `

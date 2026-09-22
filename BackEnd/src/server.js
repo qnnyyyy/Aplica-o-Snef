@@ -145,6 +145,7 @@ app.listen(PORT, '0.0.0.0', async () => {
 
         require('./services/cameraMonitor').start(dbPromise)
         require('./services/reportScheduler').start(dbPromise)
+        require('./services/auditDigest').start(dbPromise)
     } catch (e) {
         console.error('Erro crítico ao iniciar:', e.message)
         process.exit(1)

@@ -297,7 +297,7 @@
         window.location.href = 'login.html';
     });
 
-    if ((localStorage.getItem('role') || '').toLowerCase() !== 'admin') {
+    if (!['admin', 'dono'].includes((localStorage.getItem('role') || '').toLowerCase())) {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     }
 </script>

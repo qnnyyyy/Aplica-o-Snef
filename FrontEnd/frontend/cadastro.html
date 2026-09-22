@@ -232,6 +232,20 @@
             </div>
 
             <div class="form-group" style="border-top:1px solid var(--cor-borda); padding-top:15px; margin-top:5px;">
+                <label>Tipo de conta</label>
+                <div style="display:flex; gap:15px; font-size:0.9em; margin-top:4px;">
+                    <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
+                        <input type="radio" name="account-type" value="admin" id="account-type-admin" checked style="width:auto;">
+                        Localização normal
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
+                        <input type="radio" name="account-type" value="owner" id="account-type-owner" style="width:auto;">
+                        Sou o Dono desta localização
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label for="confirmation-key">Chave de Confirmação</label>
                 <input type="password" id="confirmation-key" placeholder="Chave fornecida pela SNEF" required>
             </div>

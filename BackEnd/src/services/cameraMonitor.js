@@ -40,7 +40,7 @@ async function verificarCamerasOffline(dbPromise) {
 
     for (const [tenantId, cameras] of porTenant) {
         const [admins] = await dbPromise.query(
-            "SELECT email, name FROM users WHERE tenant_id = ? AND role = 'ADMIN' AND active = TRUE",
+            "SELECT email, name FROM users WHERE tenant_id = ? AND role IN ('ADMIN', 'DONO') AND active = TRUE",
             [tenantId]
         )
 

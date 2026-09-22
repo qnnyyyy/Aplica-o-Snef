@@ -2,6 +2,15 @@ const form = document.getElementById('register-form')
 const errorMessage = document.getElementById('error-message')
 const modal = document.getElementById('success-modal')
 const btnOk = document.getElementById('btn-ok')
+const confirmationKeyInput = document.getElementById('confirmation-key')
+
+document.querySelectorAll('input[name="account-type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        confirmationKeyInput.placeholder = radio.value === 'owner' && radio.checked
+            ? 'Chave de Dono fornecida pela SNEF'
+            : 'Chave fornecida pela SNEF'
+    })
+})
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -14,6 +23,7 @@ form.addEventListener('submit', async (e) => {
     const password = document.getElementById('password').value
     const confirm = document.getElementById('confirm-password').value
     const confirmationKey = document.getElementById('confirmation-key').value
+    const accountType = document.querySelector('input[name="account-type"]:checked')?.value || 'admin'
 
     if (password !== confirm) {
         errorMessage.textContent = 'As senhas não coincidem'
@@ -22,10 +32,10 @@ form.addEventListener('submit', async (e) => {
     }
 
     try {
-        const res = await fetch('http://localhost:3000/api/auth/register', {
+        const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, locationName, confirmationKey })
+            body: JSON.stringify({ name, email, password, locationName, confirmationKey, accountType })
         })
 
         const data = await res.json()

@@ -67,7 +67,7 @@ function renderizarContas(accounts) {
     accountList.innerHTML = accounts.map(acc => `
         <button type="button" class="account-option" data-id="${acc.id}">
             <strong>${acc.tenant_name}</strong>
-            <span>${acc.role === 'admin' ? 'Admin' : 'Usuário'}</span>
+            <span>${acc.role === 'dono' ? 'Dono' : (acc.role === 'admin' ? 'Admin' : 'Usuário')}</span>
         </button>
     `).join('')
 

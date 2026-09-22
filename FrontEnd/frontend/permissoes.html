@@ -8,7 +8,7 @@
     <script>
         (function() {
             if (!localStorage.getItem('token')) window.location.href = 'login.html';
-            if ((localStorage.getItem('role') || '').toLowerCase() !== 'admin') window.location.href = 'index.html';
+            if (!['admin', 'dono'].includes((localStorage.getItem('role') || '').toLowerCase())) window.location.href = 'index.html';
         })();
     </script>
     <style>

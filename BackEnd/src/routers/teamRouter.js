@@ -188,7 +188,7 @@ module.exports = (dbPromise) => {
             const [targetRows] = await dbPromise.query('SELECT email FROM users WHERE id = ? AND tenant_id = ?', [id, req.tenantId])
 
             const [result] = await dbPromise.query(
-                "DELETE FROM users WHERE id = ? AND tenant_id = ? AND role != 'admin'",
+                "DELETE FROM users WHERE id = ? AND tenant_id = ? AND role NOT IN ('admin', 'dono')",
                 [id, req.tenantId]
             )
 

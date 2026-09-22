@@ -314,6 +314,13 @@
                 <a href="usuario.html">Usuário</a>
             </div>
         </div>
+        <div class="dropdown">
+            <button class="dropdown-button" id="locBtn">📍 Localização</button>
+            <div class="dropdown-menu" id="locMenu">
+                <div id="loc-list"><a href="#">Carregando...</a></div>
+                <a href="#" id="btn-nova-localizacao" class="owner-only" style="border-top:1px solid #eee; font-weight:700;">+ Nova Localização</a>
+            </div>
+        </div>
         <button id="btn-logout" class="btn-logout">Sair</button>
     </div>
 
@@ -323,6 +330,19 @@
         <button class="animated-button">Relatórios</button>
     </a>
 </header>
+
+<div id="new-location-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:15px;">
+    <div style="background:#fff;padding:25px;border-radius:10px;width:100%;max-width:360px;">
+        <h3 style="margin-top:0;color:var(--cor-azul-snef)">Nova localização</h3>
+        <label style="font-weight:600;font-size:0.85em;display:block;margin-bottom:5px;">Nome da localização</label>
+        <input type="text" id="new-location-name" placeholder="Ex: Linha 4 Amarela" style="width:100%;padding:10px;border:1px solid var(--cor-borda-detalhe);border-radius:4px;box-sizing:border-box;font-family:'Montserrat',sans-serif;">
+        <div id="new-location-feedback" style="font-size:0.85em;margin-top:8px;"></div>
+        <div style="display:flex;gap:10px;margin-top:15px;">
+            <button type="button" id="btn-cancel-location" style="flex:1;padding:11px;border:none;border-radius:4px;background:#e0e0e0;color:#444;cursor:pointer;font-weight:bold;">Cancelar</button>
+            <button type="button" id="btn-confirm-location" style="flex:1;padding:11px;border:none;border-radius:4px;background:var(--cor-azul-snef);color:#fff;cursor:pointer;font-weight:bold;">Criar</button>
+        </div>
+    </div>
+</div>
 
 <div id="data-scope">
     <span>ESTATÍSTICAS DE HOJE</span>
@@ -543,7 +563,10 @@
     });
 </script>
 
-<script>
+<script type="module">
+    const token = localStorage.getItem('token');
+    const currentRole = (localStorage.getItem('role') || '').toLowerCase();
+
     document.getElementById('btn-logout').addEventListener('click', () => {
         localStorage.clear();
         window.location.href = 'login.html';
@@ -551,16 +574,128 @@
 
     const dropBtn = document.getElementById('dropBtn');
     const dropMenu = document.getElementById('dropMenu');
+    const locBtn = document.getElementById('locBtn');
+    const locMenu = document.getElementById('locMenu');
 
     dropBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        locMenu.style.display = 'none';
         dropMenu.style.display = dropMenu.style.display === 'block' ? 'none' : 'block';
     });
-    document.addEventListener('click', () => dropMenu.style.display = 'none');
+    locBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropMenu.style.display = 'none';
+        locMenu.style.display = locMenu.style.display === 'block' ? 'none' : 'block';
+    });
+    document.addEventListener('click', () => {
+        dropMenu.style.display = 'none';
+        locMenu.style.display = 'none';
+    });
 
-    if ((localStorage.getItem('role') || '').toLowerCase() !== 'admin') {
+    if (!['admin', 'dono'].includes(currentRole)) {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     }
+    if (currentRole !== 'dono') {
+        document.querySelectorAll('.owner-only').forEach(el => el.style.display = 'none');
+    }
+
+    async function carregarLocalizacoes() {
+        const locList = document.getElementById('loc-list');
+        try {
+            const res = await fetch('/api/auth/my-accounts', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+
+            if (result.status !== 'success') throw new Error();
+
+            locList.innerHTML = result.data.map(acc => `
+                <a href="#" data-id="${acc.id}" style="${acc.current ? 'font-weight:700;color:var(--cor-azul-snef);' : ''}">
+                    ${acc.current ? '✓ ' : ''}${acc.tenant_name}
+                </a>
+            `).join('');
+
+            locList.querySelectorAll('a[data-id]').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    trocarLocalizacao(a.dataset.id);
+                });
+            });
+        } catch {
+            locList.innerHTML = '<a href="#">Erro ao carregar</a>';
+        }
+    }
+
+    async function trocarLocalizacao(accountId) {
+        try {
+            const res = await fetch('/api/auth/switch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ accountId })
+            });
+            const result = await res.json();
+
+            if (!res.ok) {
+                alert(result.message || 'Erro ao trocar de localização');
+                return;
+            }
+
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('role', result.user.role);
+            window.location.reload();
+        } catch {
+            alert('Erro ao comunicar com o servidor.');
+        }
+    }
+
+    const newLocationModal = document.getElementById('new-location-modal');
+    const newLocationName = document.getElementById('new-location-name');
+    const newLocationFeedback = document.getElementById('new-location-feedback');
+
+    document.getElementById('btn-nova-localizacao').addEventListener('click', (e) => {
+        e.preventDefault();
+        locMenu.style.display = 'none';
+        newLocationName.value = '';
+        newLocationFeedback.textContent = '';
+        newLocationModal.style.display = 'flex';
+    });
+
+    document.getElementById('btn-cancel-location').addEventListener('click', () => {
+        newLocationModal.style.display = 'none';
+    });
+
+    document.getElementById('btn-confirm-location').addEventListener('click', async () => {
+        const locationName = newLocationName.value.trim();
+        if (!locationName) {
+            newLocationFeedback.style.color = '#dc3545';
+            newLocationFeedback.textContent = 'Digite um nome para a localização.';
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/create-location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ locationName })
+            });
+            const result = await res.json();
+
+            if (!res.ok) {
+                newLocationFeedback.style.color = '#dc3545';
+                newLocationFeedback.textContent = result.message || 'Erro ao criar localização';
+                return;
+            }
+
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('role', result.user.role);
+            window.location.reload();
+        } catch {
+            newLocationFeedback.style.color = '#dc3545';
+            newLocationFeedback.textContent = 'Erro ao comunicar com o servidor.';
+        }
+    });
+
+    carregarLocalizacoes();
 </script>
 
 </body>

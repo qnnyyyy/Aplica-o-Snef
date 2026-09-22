@@ -66,18 +66,23 @@ module.exports = function (dbPromise) {
     })
 
     router.post('/register', async (req, res) => {
-        const { name, email, password, locationName, confirmationKey } = req.body
+        const { name, email, password, locationName, confirmationKey, accountType } = req.body
 
         if (!name || !email || !password || !locationName) {
             return res.status(400).json({ message: 'Dados inválidos' })
         }
 
-        if (confirmationKey !== process.env.REGISTRATION_KEY) {
+        const isOwnerAccount = accountType === 'owner'
+        const expectedKey = isOwnerAccount ? process.env.OWNER_REGISTRATION_KEY : process.env.REGISTRATION_KEY
+
+        if (confirmationKey !== expectedKey) {
             return res.status(403).json({ message: 'Chave de confirmação inválida' })
         }
 
+        const role = isOwnerAccount ? 'dono' : 'admin'
+
         try {
-            // cada cadastro cria seu próprio tenant; quem cria vira admin dele
+            // cada cadastro cria seu próprio tenant; quem cria vira admin (ou dono) dele
             const apiKey = crypto.randomBytes(20).toString('hex')
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name, api_key) VALUES (?, ?)',
@@ -95,8 +100,8 @@ module.exports = function (dbPromise) {
                 : await bcrypt.hash(password, 10)
 
             const [result] = await dbPromise.query(
-                "INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, 'admin')",
-                [name, email, passwordHash, tenantId]
+                'INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, ?)',
+                [name, email, passwordHash, tenantId, role]
             )
 
             // dono do tenant: nenhum outro admin pode alterar a permissão dele
@@ -106,7 +111,7 @@ module.exports = function (dbPromise) {
             )
 
             const token = jwt.sign(
-                { id: result.insertId, email, tenant_id: tenantId, role: 'admin' },
+                { id: result.insertId, email, tenant_id: tenantId, role },
                 process.env.JWT_SECRET,
                 { expiresIn: '8h' }
             )
@@ -114,10 +119,95 @@ module.exports = function (dbPromise) {
             res.json({
                 status: 'success',
                 token,
-                user: { id: result.insertId, name, email, tenant_id: tenantId, role: 'admin' }
+                user: { id: result.insertId, name, email, tenant_id: tenantId, role }
             })
         } catch {
             res.status(500).json({ message: 'Erro ao cadastrar' })
+        }
+    })
+
+    router.post('/create-location', simpleAuthMiddleware, async (req, res) => {
+        const { locationName } = req.body
+
+        if ((req.user.role || '').toLowerCase() !== 'dono') {
+            return res.status(403).json({ status: 'error', message: 'Apenas o Dono pode criar novas localizações' })
+        }
+
+        if (!locationName || !locationName.trim()) {
+            return res.status(400).json({ status: 'error', message: 'Nome da localização é obrigatório' })
+        }
+
+        try {
+            const [currentRows] = await dbPromise.query('SELECT name, password_hash FROM users WHERE id = ?', [req.user.id])
+
+            if (currentRows.length === 0) {
+                return res.status(404).json({ status: 'error', message: 'Usuário não encontrado' })
+            }
+
+            const apiKey = crypto.randomBytes(20).toString('hex')
+            const [tenantResult] = await dbPromise.query(
+                'INSERT INTO tenants (name, api_key) VALUES (?, ?)',
+                [locationName.trim(), apiKey]
+            )
+            const tenantId = tenantResult.insertId
+
+            const [result] = await dbPromise.query(
+                "INSERT INTO users (name, email, password_hash, tenant_id, role) VALUES (?, ?, ?, ?, 'dono')",
+                [currentRows[0].name, req.user.email, currentRows[0].password_hash, tenantId]
+            )
+
+            await dbPromise.query('UPDATE tenants SET owner_user_id = ? WHERE id = ?', [result.insertId, tenantId])
+
+            issueLoginResponse(res, {
+                id: result.insertId,
+                name: currentRows[0].name,
+                email: req.user.email,
+                tenant_id: tenantId,
+                role: 'dono'
+            }, req, { skipAlert: true })
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao criar localização' })
+        }
+    })
+
+    router.get('/my-accounts', simpleAuthMiddleware, async (req, res) => {
+        try {
+            const [rows] = await dbPromise.query(
+                `SELECT u.id, u.role, t.name AS tenant_name
+                 FROM users u
+                 JOIN tenants t ON t.id = u.tenant_id
+                 WHERE u.email = ?
+                 ORDER BY t.name`,
+                [req.user.email]
+            )
+
+            res.json({
+                status: 'success',
+                data: rows.map(r => ({
+                    id: r.id,
+                    role: (r.role || 'viewer').toLowerCase(),
+                    tenant_name: r.tenant_name,
+                    current: r.id === req.user.id
+                }))
+            })
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao buscar localizações' })
+        }
+    })
+
+    router.post('/switch', simpleAuthMiddleware, async (req, res) => {
+        const { accountId } = req.body
+
+        try {
+            const [rows] = await dbPromise.query('SELECT * FROM users WHERE id = ? AND email = ?', [accountId, req.user.email])
+
+            if (rows.length === 0) {
+                return res.status(403).json({ status: 'error', message: 'Essa conta não pertence a esse e-mail' })
+            }
+
+            issueLoginResponse(res, rows[0], req, { skipAlert: true })
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: 'Erro ao trocar de localização' })
         }
     })
 
@@ -142,7 +232,7 @@ module.exports = function (dbPromise) {
         }).catch(err => console.error('Erro ao enviar alerta de login:', err.message))
     }
 
-    function issueLoginResponse(res, user, req) {
+    function issueLoginResponse(res, user, req, options = {}) {
         const tenantId = user.tenant_id || 1
         const role = (user.role || 'viewer').toLowerCase()
 
@@ -152,7 +242,9 @@ module.exports = function (dbPromise) {
             { expiresIn: '8h' }
         )
 
-        enviarAlertaLogin(user, req)
+        if (!options.skipAlert) {
+            enviarAlertaLogin(user, req)
+        }
 
         res.json({
             status: 'success',

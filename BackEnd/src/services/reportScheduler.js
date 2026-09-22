@@ -17,7 +17,7 @@ async function enviarRelatoriosSemanais(dbPromise) {
 
     for (const tenant of tenants) {
         const [admins] = await dbPromise.query(
-            "SELECT email, name FROM users WHERE tenant_id = ? AND role = 'ADMIN' AND active = TRUE",
+            "SELECT email, name FROM users WHERE tenant_id = ? AND role IN ('ADMIN', 'DONO') AND active = TRUE",
             [tenant.id]
         )
         if (admins.length === 0) continue

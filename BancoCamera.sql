@@ -270,7 +270,9 @@ CREATE TABLE users (
     email VARCHAR(150) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
 
-    role ENUM('ADMIN','MANAGER','OPERATOR','VIEWER') DEFAULT 'VIEWER',
+    -- DONO só é atribuído pela aplicação (cadastro com a chave de dono ou criação
+    -- de nova localização por quem já é dono) — nunca pela tela de Permissões.
+    role ENUM('ADMIN','MANAGER','OPERATOR','VIEWER','DONO') DEFAULT 'VIEWER',
     active BOOLEAN DEFAULT TRUE,
 
     last_login DATETIME NULL,
