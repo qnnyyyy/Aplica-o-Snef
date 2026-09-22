@@ -315,7 +315,7 @@ module.exports = function (dbPromise) {
             <div class="card">
                 <h2>${titulo}</h2>
                 <p>${mensagem}</p>
-                <p><a href="${process.env.FRONT_URL}/login.html">Ir para o login</a></p>
+                <p style="color:#999;font-size:13px">Pode fechar esta janela.</p>
             </div>
         </body>
         </html>`
