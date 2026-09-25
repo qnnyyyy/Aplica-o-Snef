@@ -73,6 +73,7 @@ CREATE TABLE cameras (
     zone_id BIGINT NULL,
     last_seen TIMESTAMP NULL,
     last_alert_sent_at DATETIME NULL,          -- evita reenviar alerta de câmera offline repetidamente
+    whatsapp_alert_stage INT NOT NULL DEFAULT 0,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

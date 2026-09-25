@@ -112,6 +112,9 @@ app.post('/vivotek/push', verifyCameraApiKey, async (req, res) => {
                 'INSERT INTO camera_alerts (tenant_id, camera_id, camera_name, type) VALUES (?, ?, ?, ?)',
                 [tenantId, internalId, cameraName || `Câmera ${cameraSerial}`, 'ONLINE']
             )
+            // require('./services/cameraMonitor')
+            //     .avisarWhatsappRecuperacao(dbPromise, tenantId, internalId, cameraName || `Câmera ${cameraSerial}`)
+            //     .catch(err => console.error('Erro ao avisar recuperação por WhatsApp:', err.message))
         }
 
         const analyticData = payload.Analytic_Data
@@ -154,11 +157,13 @@ app.listen(PORT, '0.0.0.0', async () => {
         console.log(`Servidor rodando em http://localhost:${PORT}`)
         console.log(`Banco de dados conectado com sucesso`)
 
+        // require('./services/whatsappBot').start()
         require('./services/cameraMonitor').start(dbPromise)
         require('./services/reportScheduler').start(dbPromise)
         require('./services/auditDigest').start(dbPromise)
         require('./services/dataRetention').start(dbPromise)
         require('./services/cameraActivityReport').start(dbPromise)
+        require('./services/dbBackup').start(dbPromise)
     } catch (e) {
         console.error('Erro crítico ao iniciar:', e.message)
         process.exit(1)
