@@ -249,7 +249,7 @@ els.btnEditSave.addEventListener('click', async () => {
 
 function abrirManutencao(id, name, currentPhone) {
     els.maintenanceUserId.value = id
-    els.maintenanceModalTitle.textContent = `🔧 Marcar ${name} como Manutenção`
+    els.maintenanceModalTitle.textContent = `Marcar ${name} como Manutenção`
     els.maintenancePhone.value = currentPhone || ''
     els.maintenanceFeedback.textContent = ''
     els.maintenanceFeedback.className = ''

@@ -89,7 +89,6 @@ module.exports = (dbPromise) => {
                 return res.status(409).json({ status: 'error', message: 'Esse e-mail já tem acesso a este tenant' })
             }
 
-            // senha temporária inutilizável até a pessoa definir a própria pelo link
             const placeholderHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
 
             const [result] = await dbPromise.query(
@@ -179,8 +178,7 @@ module.exports = (dbPromise) => {
         }
     })
 
-    // "Manutenção" é só uma etiqueta/contato, não uma permissão — por isso não bloqueia
-    // auto-atribuição como o /role bloqueia (admin/dono pode marcar a si mesmo).
+    // Manutenção é só uma etiqueta, por isso dá pra marcar a si mesmo
     router.put('/:id/maintenance', simpleAuthMiddleware, adminMiddleware, async (req, res) => {
         const { id } = req.params
         const { enabled, phone } = req.body

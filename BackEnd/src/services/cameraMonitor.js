@@ -1,6 +1,5 @@
 const cron = require('node-cron')
 const { transporter, logoAttachment } = require('../utils/mailer')
-// const { enviarWhatsApp } = require('./whatsappBot')
 
 const OFFLINE_THRESHOLD_MINUTES = 15
 const ALERT_COOLDOWN_HOURS = 6
@@ -9,90 +8,15 @@ const CAPACITY_COOLDOWN_HOURS = 2
 function start(dbPromise) {
     cron.schedule('*/20 * * * *', async () => {
         try {
-            // consulta leve que também mantém o banco ativo (evita power-off por inatividade em planos free)
+            // o SELECT 1 também evita que o banco do plano free desligue por inatividade
             await dbPromise.query('SELECT 1')
             await verificarCamerasOffline(dbPromise)
-            // await verificarAlertasWhatsapp(dbPromise)
             await verificarSuperlotacao(dbPromise)
         } catch (err) {
             console.error('Erro no monitor de câmeras:', err.message)
         }
     })
 }
-
-/*
-function limiarDoEstagio(numeroAlerta) {
-    if (numeroAlerta === 1) return 5
-    if (numeroAlerta === 2) return 30
-    return 60 * (numeroAlerta - 2)
-}
-
-function formatarTempo(minutos) {
-    if (minutos < 60) return `${minutos} minutos`
-    const horas = minutos / 60
-    return horas === 1 ? '1 hora' : `${horas} horas`
-}
-
-async function buscarDestinatariosWhatsapp(dbPromise, tenantId) {
-    const [rows] = await dbPromise.query(
-        `SELECT phone_number FROM users
-         WHERE tenant_id = ? AND active = TRUE AND phone_number IS NOT NULL AND phone_number <> ''
-         AND (is_maintenance = TRUE OR role IN ('ADMIN', 'DONO'))`,
-        [tenantId]
-    )
-    return rows.map(r => r.phone_number)
-}
-
-async function verificarAlertasWhatsapp(dbPromise) {
-    const [offline] = await dbPromise.query(`
-        SELECT c.id, c.name, c.tenant_id, c.whatsapp_alert_stage,
-               z.name AS zone_name, t.name AS tenant_name,
-               MAX(rp.received_at) as last_seen
-        FROM cameras c
-        LEFT JOIN raw_payloads rp ON rp.camera_id = c.id
-        LEFT JOIN zones z ON z.id = c.zone_id
-        JOIN tenants t ON t.id = c.tenant_id
-        WHERE c.enabled = TRUE
-        GROUP BY c.id, c.name, c.tenant_id, c.whatsapp_alert_stage, z.name, t.name
-        HAVING last_seen IS NULL OR last_seen < NOW() - INTERVAL 5 MINUTE
-    `)
-
-    if (offline.length === 0) return
-
-    const destinatariosPorTenant = new Map()
-
-    for (const camera of offline) {
-        const minutosOffline = camera.last_seen
-            ? Math.floor((Date.now() - new Date(camera.last_seen).getTime()) / 60000)
-            : Infinity
-
-        const proximoAlerta = camera.whatsapp_alert_stage + 1
-        const limiar = limiarDoEstagio(proximoAlerta)
-
-        if (minutosOffline < limiar) continue
-
-        if (!destinatariosPorTenant.has(camera.tenant_id)) {
-            destinatariosPorTenant.set(camera.tenant_id, await buscarDestinatariosWhatsapp(dbPromise, camera.tenant_id))
-        }
-        const telefones = destinatariosPorTenant.get(camera.tenant_id)
-        if (telefones.length === 0) continue
-
-        const local = camera.zone_name ? `${camera.tenant_name} (${camera.zone_name})` : camera.tenant_name
-        const mensagem = `🔴 Câmera *${camera.name}*, ${local} não tem conexão há cerca de ${formatarTempo(limiar)}.`
-
-        let algumEnviado = false
-        for (const telefone of telefones) {
-            const enviado = await enviarWhatsApp(telefone, mensagem)
-            if (enviado) algumEnviado = true
-        }
-
-        if (algumEnviado) {
-            await dbPromise.query('UPDATE cameras SET whatsapp_alert_stage = ? WHERE id = ?', [proximoAlerta, camera.id])
-        }
-    }
-}
-
-*/
 
 async function verificarCamerasOffline(dbPromise) {
     const [offline] = await dbPromise.query(`
@@ -217,19 +141,5 @@ async function enviarAlertaOffline(admins, cameras) {
         }).catch(err => console.error('Erro ao enviar alerta de câmera offline:', err.message))
     }
 }
-
-/*
-async function avisarWhatsappRecuperacao(dbPromise, tenantId, cameraId, cameraName) {
-    await dbPromise.query('UPDATE cameras SET whatsapp_alert_stage = 0 WHERE id = ?', [cameraId])
-
-    const telefones = await buscarDestinatariosWhatsapp(dbPromise, tenantId)
-    if (telefones.length === 0) return
-
-    const mensagem = `🟢 Câmera *${cameraName}* voltou a se conectar normalmente.`
-    for (const telefone of telefones) {
-        await enviarWhatsApp(telefone, mensagem)
-    }
-}
-*/
 
 module.exports = { start }

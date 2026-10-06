@@ -105,16 +105,11 @@ app.post('/vivotek/push', verifyCameraApiKey, async (req, res) => {
         )
 
         if (wasAlerting) {
-            // câmera voltou a enviar dados depois de ter sido marcada offline: limpa o alerta
-            // pra poder alertar de novo se cair de novo, e registra a recuperação pro sininho/relatório
             await dbPromise.query('UPDATE cameras SET last_alert_sent_at = NULL WHERE id = ?', [internalId])
             await dbPromise.query(
                 'INSERT INTO camera_alerts (tenant_id, camera_id, camera_name, type) VALUES (?, ?, ?, ?)',
                 [tenantId, internalId, cameraName || `Câmera ${cameraSerial}`, 'ONLINE']
             )
-            // require('./services/cameraMonitor')
-            //     .avisarWhatsappRecuperacao(dbPromise, tenantId, internalId, cameraName || `Câmera ${cameraSerial}`)
-            //     .catch(err => console.error('Erro ao avisar recuperação por WhatsApp:', err.message))
         }
 
         const analyticData = payload.Analytic_Data
@@ -157,7 +152,6 @@ app.listen(PORT, '0.0.0.0', async () => {
         console.log(`Servidor rodando em http://localhost:${PORT}`)
         console.log(`Banco de dados conectado com sucesso`)
 
-        // require('./services/whatsappBot').start()
         require('./services/cameraMonitor').start(dbPromise)
         require('./services/reportScheduler').start(dbPromise)
         require('./services/auditDigest').start(dbPromise)

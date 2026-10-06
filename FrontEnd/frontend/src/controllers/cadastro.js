@@ -4,7 +4,6 @@ const successTitle = document.getElementById('success-title')
 const successText = document.getElementById('success-text')
 const btnOk = document.getElementById('btn-ok')
 
-// --- abas ---
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -23,7 +22,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     })
 })
 
-// --- autocomplete de estação/localidade (com tolerância a erro de digitação) ---
 
 const locationSearch = document.getElementById('location-search')
 const locationSearchId = document.getElementById('location-search-id')
@@ -117,7 +115,6 @@ async function carregarLocalizacoes() {
     }
 }
 
-// --- aba "Novo cadastro" ---
 
 const form = document.getElementById('register-form')
 const confirmationKeyInput = document.getElementById('confirmation-key')
@@ -195,7 +192,7 @@ form.addEventListener('submit', async (e) => {
                 return
             }
 
-            showSuccess('Sucesso! 🎉', 'Sua localidade foi criada. Clique abaixo para acessar o sistema.')
+            showSuccess('Sucesso!', 'Sua localidade foi criada. Clique abaixo para acessar o sistema.')
         } else {
             if (!locationSearchId.value) {
                 showError('Selecione a estação/localidade na lista')
@@ -214,14 +211,13 @@ form.addEventListener('submit', async (e) => {
                 return
             }
 
-            showSuccess('Cadastro enviado! 📨', 'Seu pedido foi encaminhado para aprovação do responsável pela localidade. Você receberá um e-mail quando for aprovado.')
+            showSuccess('Cadastro enviado!', 'Seu pedido foi encaminhado para aprovação do responsável pela localidade. Você receberá um e-mail quando for aprovado.')
         }
     } catch (err) {
         showError('Erro de conexão com o servidor')
     }
 })
 
-// --- aba "Já sou Dono, tenho conta" ---
 
 const ownerForm = document.getElementById('owner-location-form')
 

@@ -53,7 +53,6 @@ module.exports = function (dbPromise) {
 
             if (password) {
                 const passwordHash = await bcrypt.hash(password, 10)
-                // aplica em todas as contas desse e-mail, não só na atual
                 await dbPromise.query(
                     'UPDATE users SET password_hash = ? WHERE email = ?',
                     [passwordHash, userEmail]
@@ -66,10 +65,6 @@ module.exports = function (dbPromise) {
         }
     })
 
-    // cadastro direto: só o Dono cria conta na hora, pois é ele quem cria a própria localidade.
-    // Admin e Operador passam por /request-registration e precisam de aprovação.
-    // Só serve pra quem AINDA não tem conta — quem já tem usa /register-owner-location,
-    // que verifica a senha de verdade em vez de simplesmente reaproveitar o hash existente.
     router.post('/register', async (req, res) => {
         const { name, email, password, locationName, confirmationKey } = req.body
 
@@ -93,7 +88,6 @@ module.exports = function (dbPromise) {
             const role = 'dono'
             const passwordHash = await bcrypt.hash(password, 10)
 
-            // cada cadastro cria seu próprio tenant; quem cria vira dono dele
             const apiKey = crypto.randomBytes(20).toString('hex')
             const [tenantResult] = await dbPromise.query(
                 'INSERT INTO tenants (name, api_key) VALUES (?, ?)',
@@ -106,7 +100,6 @@ module.exports = function (dbPromise) {
                 [name, email, passwordHash, tenantId, role]
             )
 
-            // dono do tenant: nenhum outro admin pode alterar a permissão dele
             await dbPromise.query(
                 'UPDATE tenants SET owner_user_id = ? WHERE id = ?',
                 [result.insertId, tenantId]
@@ -128,9 +121,7 @@ module.exports = function (dbPromise) {
         }
     })
 
-    // pra quem já é dono (ou já tem qualquer conta) e quer criar mais uma localidade.
-    // Verifica a senha de verdade pra evitar que alguém crie uma localidade "como" outra pessoa
-    // só sabendo o e-mail dela e a chave de dono.
+    // confere a senha pra ninguém criar localidade no nome de outro só com e-mail e chave de dono
     router.post('/register-owner-location', async (req, res) => {
         const { email, password, locationName, confirmationKey } = req.body
 
@@ -220,10 +211,10 @@ module.exports = function (dbPromise) {
                             <p><strong>${name}</strong> pediu acesso como <strong>${roleLabel}</strong> em <strong>${tenantName}</strong>, às <strong>${quando}</strong>.</p>
                             <div style="margin-top:20px">
                                 <a href="${linkBase}&action=approve" style="display:inline-block;margin:0 6px;padding:14px 22px;background:#368D6D;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
-                                    ✅ Aprovar
+                                    Aprovar
                                 </a>
                                 <a href="${linkBase}&action=reject" style="display:inline-block;margin:0 6px;padding:14px 22px;background:#D9534F;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
-                                    ❌ Rejeitar
+                                    Rejeitar
                                 </a>
                             </div>
                             <p style="color:#888;font-size:12px;margin-top:20px">Esse link vale por 7 dias e some assim que alguém decidir — não precisa fazer nada se outro admin já resolver.</p>
@@ -259,7 +250,6 @@ module.exports = function (dbPromise) {
                 return res.status(404).json({ message: 'Localização não encontrada' })
             }
 
-            // limite de 1 pedido por e-mail a cada 24h, pra não floodar o e-mail dos admins
             const [recent] = await dbPromise.query(
                 'SELECT id FROM pending_registrations WHERE email = ? AND created_at >= NOW() - INTERVAL 1 DAY',
                 [email]
@@ -321,9 +311,7 @@ module.exports = function (dbPromise) {
         </html>`
     }
 
-    // aprovar/rejeitar direto do link do e-mail, sem precisar logar.
-    // o token é a própria autorização — some assim que alguém decide, então
-    // se o mesmo e-mail chegar pra vários admins, só o primeiro clique vale.
+    // o token já é a autorização e deixa de valer na primeira decisão
     router.get('/decide-registration', async (req, res) => {
         const { id, token, action } = req.query
 
@@ -363,7 +351,7 @@ module.exports = function (dbPromise) {
                 return res.send(paginaDecisao('Não foi possível aprovar', result.message, false))
             }
 
-            return res.send(paginaDecisao('Cadastro aprovado! 🎉', `${pending.name} agora tem acesso à localização.`, true))
+            return res.send(paginaDecisao('Cadastro aprovado!', `${pending.name} agora tem acesso à localização.`, true))
         } catch (err) {
             res.status(500).send(paginaDecisao('Erro', 'Não foi possível processar esse pedido agora. Tente novamente mais tarde.', false))
         }
@@ -515,7 +503,6 @@ module.exports = function (dbPromise) {
                 return issueLoginResponse(res, matches[0], req)
             }
 
-            // senha válida em mais de uma conta: pede pra escolher o tenant
             const tenantIds = [...new Set(matches.map(m => m.tenant_id))]
             const [tenants] = await dbPromise.query(
                 `SELECT id, name FROM tenants WHERE id IN (${tenantIds.map(() => '?').join(',')})`,
@@ -581,7 +568,6 @@ module.exports = function (dbPromise) {
             const token = crypto.randomBytes(32).toString('hex')
             const expires = new Date(Date.now() + 3600000)
 
-            // vale pra todas as contas desse e-mail, não só a primeira
             await dbPromise.query(
                 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE email = ?',
                 [token, expires, email]
@@ -645,7 +631,6 @@ module.exports = function (dbPromise) {
 
             const passwordHash = await bcrypt.hash(password, 10)
 
-            // sincroniza em todas as contas desse e-mail, não só a do token
             await dbPromise.query(
                 'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE email = ?',
                 [passwordHash, users[0].email]

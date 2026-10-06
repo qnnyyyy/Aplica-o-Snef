@@ -37,7 +37,7 @@ async function enviarRelatorioSemanal(dbPromise) {
                 <td style="padding:8px;border-bottom:1px solid #eee">${e.camera_name || 'Câmera'}</td>
                 <td style="padding:8px;border-bottom:1px solid #eee">
                     <span style="color:${e.type === 'OFFLINE' ? '#b3261e' : '#1e7d34'};font-weight:bold">
-                        ${e.type === 'OFFLINE' ? '🔴 Caiu' : '🟢 Voltou'}
+                        ${e.type === 'OFFLINE' ? 'Caiu' : 'Voltou'}
                     </span>
                 </td>
                 <td style="padding:8px;border-bottom:1px solid #eee">${new Date(e.created_at).toLocaleString('pt-BR')}</td>

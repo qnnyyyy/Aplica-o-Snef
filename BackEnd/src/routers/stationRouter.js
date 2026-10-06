@@ -3,8 +3,6 @@ const router = express.Router();
 const tenantMiddleware = require('../tenantMiddleware');
 const adminMiddleware = require('../adminMiddleware');
 
-// Cada tenant já é uma estação/localidade — esta rota só edita o nome e o
-// endereço do próprio tenant, não existe mais uma lista de estações.
 module.exports = (dbPromise) => {
 
     router.get('/', tenantMiddleware, async (req, res) => {

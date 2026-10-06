@@ -1,32 +1,16 @@
--- =========================================================
--- BANCO DE DADOS
--- Sistema de Contagem de Pessoas - Vivotek
--- Empresa: SNEF
--- =========================================================
-
 CREATE DATABASE IF NOT EXISTS snef_people_count
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
 USE snef_people_count;
 
--- =========================================================
--- TABELA: tenants
--- Clientes/empresas do sistema (multi-tenant)
--- =========================================================
 CREATE TABLE tenants (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
-    -- Cada tenant JÁ é uma estação/localidade (ex: "Linha 11 Prata") — não existe
-    -- uma tabela separada de "estações" dentro do tenant, seria redundante.
     location VARCHAR(255) NULL,
-    -- Admin principal/dono da localidade. Ninguém consegue alterar a
-    -- permissão desse usuário pela aplicação — só mexendo direto no banco.
     owner_user_id BIGINT NULL,
-    -- Chave usada pelas câmeras para autenticar o push de eventos deste tenant
     api_key VARCHAR(64) NULL UNIQUE,
 
-    -- Alerta de superlotação: dispara quando "pessoas no local agora" passa desse valor
     capacity_alert_threshold INT NULL,
     capacity_alert_sent_at DATETIME NULL,
 
@@ -35,10 +19,6 @@ CREATE TABLE tenants (
 
 INSERT INTO tenants (id, name, api_key) VALUES (1, 'SNEF', SUBSTRING(SHA2(CONCAT(RAND(), NOW()), 256), 1, 40));
 
--- =========================================================
--- TABELA: zones
--- Zonas físicas monitoradas dentro da localidade (tenant)
--- =========================================================
 CREATE TABLE zones (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL DEFAULT 1,
@@ -53,26 +33,22 @@ CREATE TABLE zones (
 
 CREATE INDEX idx_zones_tenant ON zones(tenant_id);
 
--- =========================================================
--- TABELA: cameras
--- Cadastro das câmeras Vivotek
--- =========================================================
 CREATE TABLE cameras (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL DEFAULT 1,
 
-    camera_id VARCHAR(100) NOT NULL UNIQUE,   -- Serial / Device_ID
+    camera_id VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(255),
-    osd_text VARCHAR(100),                    -- Nome exibido na própria imagem (OSD)
+    osd_text VARCHAR(100),
     model VARCHAR(100),
-    camera_user VARCHAR(100),                 -- Usuário de acesso à API da câmera
-    camera_password_enc VARCHAR(500),         -- Senha criptografada (AES-256-GCM)
-    location VARCHAR(255) UNIQUE,             -- IP ou local físico
+    camera_user VARCHAR(100),
+    camera_password_enc VARCHAR(500),
+    location VARCHAR(255) UNIQUE,
     enabled BOOLEAN DEFAULT TRUE,
 
     zone_id BIGINT NULL,
     last_seen TIMESTAMP NULL,
-    last_alert_sent_at DATETIME NULL,          -- evita reenviar alerta de câmera offline repetidamente
+    last_alert_sent_at DATETIME NULL,
     whatsapp_alert_stage INT NOT NULL DEFAULT 0,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -89,10 +65,6 @@ CREATE TABLE cameras (
 
 CREATE INDEX idx_cameras_tenant ON cameras(tenant_id);
 
--- =========================================================
--- TABELA: rules
--- Regras analíticas (VCA)
--- =========================================================
 CREATE TABLE rules (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -108,10 +80,6 @@ CREATE TABLE rules (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =========================================================
--- TABELA: raw_payloads
--- Guarda o JSON bruto enviado pela câmera
--- =========================================================
 CREATE TABLE raw_payloads (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
@@ -120,7 +88,6 @@ CREATE TABLE raw_payloads (
     raw_json JSON NOT NULL,
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- Campos derivados do JSON (para performance)
     direction VARCHAR(5)
         GENERATED ALWAYS AS (
             JSON_UNQUOTE(JSON_EXTRACT(raw_json,'$.direction'))
@@ -144,10 +111,6 @@ CREATE INDEX idx_raw_time ON raw_payloads (received_at);
 CREATE INDEX idx_raw_camera ON raw_payloads (camera_id);
 CREATE INDEX idx_raw_payloads_tenant ON raw_payloads (tenant_id);
 
--- =========================================================
--- TABELA: people_count_events
--- Eventos normalizados (opcional, futuro)
--- =========================================================
 CREATE TABLE people_count_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
@@ -186,10 +149,6 @@ CREATE TABLE people_count_events (
 
 CREATE INDEX idx_pce_tenant ON people_count_events(tenant_id);
 
--- =========================================================
--- TABELA: daily_counts
--- Agregação diária
--- =========================================================
 CREATE TABLE daily_counts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
@@ -213,17 +172,13 @@ CREATE TABLE daily_counts (
         REFERENCES rules(id)
 );
 
--- =========================================================
--- TABELA: hourly_counts
--- Agregação horária
--- =========================================================
 CREATE TABLE hourly_counts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
     camera_id BIGINT NOT NULL,
     rule_id BIGINT NULL,
     date DATE NOT NULL,
-    hour TINYINT NOT NULL, -- 0 a 23
+    hour TINYINT NOT NULL,
 
     total_in BIGINT DEFAULT 0,
     total_out BIGINT DEFAULT 0,
@@ -243,10 +198,6 @@ CREATE TABLE hourly_counts (
         REFERENCES rules(id)
 );
 
--- =========================================================
--- TABELA: users
--- Usuários do sistema
--- =========================================================
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL DEFAULT 1,
@@ -255,13 +206,9 @@ CREATE TABLE users (
     email VARCHAR(150) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
 
-    -- DONO só é atribuído pela aplicação (cadastro com a chave de dono ou criação
-    -- de nova localização por quem já é dono) — nunca pela tela de Permissões.
     role ENUM('ADMIN','MANAGER','OPERATOR','VIEWER','DONO') DEFAULT 'VIEWER',
     active BOOLEAN DEFAULT TRUE,
 
-    -- "Manutenção" é só uma etiqueta visual/contato, não uma permissão — não afeta acesso.
-    -- Quem tem a tag recebe os alertas de câmera offline também por WhatsApp.
     is_maintenance BOOLEAN DEFAULT FALSE,
     phone_number VARCHAR(30) NULL,
 
@@ -273,8 +220,6 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- Mesmo e-mail pode ter uma conta admin em um tenant e viewer em outro;
-    -- só não pode repetir dentro do mesmo tenant.
     UNIQUE KEY uq_users_email_tenant (email, tenant_id),
 
     CONSTRAINT fk_users_tenant
@@ -284,12 +229,6 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_tenant ON users(tenant_id);
 
--- =========================================================
--- TABELA: pending_registrations
--- Pedidos de cadastro (Admin/Operador) aguardando aprovação de
--- um admin ou dono da localidade escolhida. Dono não passa por aqui,
--- pois ele cria a própria localidade na hora.
--- =========================================================
 CREATE TABLE pending_registrations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL,
@@ -305,8 +244,6 @@ CREATE TABLE pending_registrations (
     decided_at DATETIME NULL,
     decided_by VARCHAR(150) NULL,
 
-    -- token usado nos links de Aprovar/Rejeitar do e-mail de notificação;
-    -- some (status muda pra PENDING só uma vez) assim que alguém decide
     decision_token VARCHAR(64) NULL,
     decision_token_expires DATETIME NULL,
 
@@ -319,10 +256,6 @@ CREATE INDEX idx_pending_tenant ON pending_registrations(tenant_id);
 CREATE INDEX idx_pending_email ON pending_registrations(email);
 CREATE INDEX idx_pending_token ON pending_registrations(decision_token);
 
--- =========================================================
--- TABELA: login_attempts
--- Histórico de tentativas de login, usado pra bloquear força bruta
--- =========================================================
 CREATE TABLE login_attempts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(150) NOT NULL,
@@ -333,11 +266,6 @@ CREATE TABLE login_attempts (
 
 CREATE INDEX idx_login_attempts_email ON login_attempts(email, created_at);
 
--- =========================================================
--- TABELA: camera_alerts
--- Histórico de câmeras que caíram/voltaram — alimenta o sininho de
--- notificação e o relatório semanal de atividade das câmeras
--- =========================================================
 CREATE TABLE camera_alerts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL,
@@ -354,10 +282,6 @@ CREATE TABLE camera_alerts (
 
 CREATE INDEX idx_camera_alerts_tenant ON camera_alerts(tenant_id, created_at);
 
--- =========================================================
--- TABELA: audit_log
--- Registro de ações administrativas (convites, mudança de permissão, remoção)
--- =========================================================
 CREATE TABLE audit_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tenant_id BIGINT NOT NULL,
@@ -375,9 +299,6 @@ CREATE TABLE audit_log (
 
 CREATE INDEX idx_audit_tenant ON audit_log(tenant_id);
 
--- =========================================================
--- TRIGGER: Agregação automática ao inserir payload
--- =========================================================
 DELIMITER //
 
 CREATE TRIGGER after_raw_payload_insert

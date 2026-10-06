@@ -33,7 +33,7 @@ form.addEventListener('submit', async (e) => {
             throw new Error(data.message || 'Erro ao solicitar recuperação');
         }
 
-        successMsg.textContent = '✅ Se o e-mail existir, enviaremos as instruções.';
+        successMsg.textContent = 'Se o e-mail existir, enviaremos as instruções.';
         successMsg.style.display = 'block';
 
         form.reset();

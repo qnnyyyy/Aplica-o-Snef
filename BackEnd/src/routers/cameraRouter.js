@@ -34,7 +34,7 @@ module.exports = (db) => {
         }
     })
 
-    // proxy pro snapshot: evita expor a credencial da câmera no navegador
+    // passa pelo servidor pra não expor a senha da câmera no navegador
     router.get('/:id/snapshot', tenantMiddleware, async (req, res) => {
         try {
             const [rows] = await db.query(

@@ -25,7 +25,6 @@ async function approveRegistration(dbPromise, pending, decidedBy) {
         return { ok: false, message: 'Esse e-mail já tem acesso a essa localização' }
     }
 
-    // mantém a mesma senha do e-mail em outras localizações, se já existir uma
     const [otherAccount] = await dbPromise.query('SELECT password_hash FROM users WHERE email = ? LIMIT 1', [pending.email])
     const finalHash = otherAccount.length > 0 ? otherAccount[0].password_hash : pending.password_hash
 
